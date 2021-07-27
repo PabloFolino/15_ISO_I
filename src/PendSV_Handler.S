@@ -41,10 +41,30 @@ PendSV_Handler:
 	* NOTA: El primer ingreso a este handler (luego del reset) implica que el push se hace sobre el
 	* stack inicial, ese stack se pierde porque no hay seguimiento del MSP en el primer ingreso
 	*/
-	push {r4-r11,lr}
-	mrs r0,msp
-	bl getContextoSiguiente
-	msr msp,r0
-	pop {r4-r11,lr}			//Recuperados todos los valores de registros
-	bx lr					//se hace un branch indirect con el valor de LR que es nuevamente EXEC_RETURN
+
+
+	cpsid i					// Deshabilita interrupciones globales
+//=======================================================================================
+	tst lr,0x10				// Si EXEC_RETURN[4]=0 se guarda S16-S31
+	it eq
+	vpusheq {s16-s31}
+
+	push {r4-r11,lr}		// Salva los registros generales por si se usan
+	mrs r0,msp				// Guardo el MSP
+
+	bl getContextoSiguiente	// llama a la función del MSE_OS_Core.c
+
+	msr msp,r0				// Recuoero el MSP
+	pop {r4-r11,lr}			// Recuperados todos los valores de registros los registros
+							// generales
+
+	tst lr,0x10				// Si EXEC_RETURN[4]=0 se recupera S16-S31
+	it eq
+	vpopeq {s16-s31}
+//=======================================================================================
+
+	cpsie	i				// Habilito las interrupciones
+
+	bx lr					// se hace un branch indirect con el valor de LR que es
+							// nuevamente EXEC_RETURN
 

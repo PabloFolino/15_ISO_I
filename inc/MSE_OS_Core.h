@@ -64,13 +64,13 @@
 #define FULL_STACKING_SIZE 			17	//16 core registers + valor previo de LR
 
 
-/*==================[definicion de datos externa]=================================*/
+/*==================[definición de datos externa]=================================*/
 
 extern uint32_t sp_tarea1;					//Stack Pointer para la tarea 1
 extern uint32_t sp_tarea2;					//Stack Pointer para la tarea 2
 
 
-/*==================[definicion de prototipos]=================================*/
+/*==================[definición de prototipos]=================================*/
 
 void os_InitTarea(void *tarea, uint32_t *stack, uint32_t *stack_pointer);
 void os_Init(void);

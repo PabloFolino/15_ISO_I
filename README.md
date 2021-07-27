@@ -1,5 +1,5 @@
 # MSE_ISO_I
-Materia:Implementación de Sitemas Operativos I de la Maestría en Sistemas Embebidos de la FIUBA
+Materia:Implementación de Sistemas Operativos I de la Maestría en Sistemas Embebidos de la FIUBA
 
 Autor: Pablo D. Folino
 
@@ -35,10 +35,10 @@ Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_
 [x.0] | 6.b. Lista para ejecución (Ready). | x |
 [x.0] | 6.c. Bloqueada (Blocked).| x |
 [x.0] | 6.d. Suspendida (Suspended) - ​ Opcional | x |
-[x.0] | 7. El tamaño de stack para cada tarea será de 256 bytes. |   |
+[x.0] | 7. El tamaño de stack para cada tarea será de 256 bytes. | ✔ |
 [x.0] | 8. La implementación de prioridades será de 4 niveles, donde el nivel cero (0) será el de más alta prioridad y tres (3) será el nivel de menor prioridad. | x |
 [x.0] | 9. La política de scheduling entre tareas de la misma prioridad será del tipo Round-Robin. | x |
-[x.0] | 10. El tick del sistema será de 1 [ms].| x |
+[x.0] | 10. El tick del sistema será de 1 [ms].| ✔ |
 [x.0] | 11. El OS debe tener ​ hooks ​ definidos como funciones ​ WEAK​ para la ejecución de código en las siguientes condiciones: |   |
 [x.0] | 11.a. Tick del sistema (​ tickHook ). | x |
 [x.0] | 11.b. Ejecución de código en segundo plano (​ taskIdle ). | x |

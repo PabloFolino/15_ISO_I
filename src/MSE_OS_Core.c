@@ -24,8 +24,10 @@
 ***************************************************************************************************/
 void os_InitTarea(void *tarea, uint32_t *stack_tarea, uint32_t *stack_pointer)  {
 
-	stack_tarea[STACK_SIZE/4 - XPSR] = INIT_XPSR;								//necesari para bit thumb
-	stack_tarea[STACK_SIZE/4 - PC_REG] = (uint32_t)tarea;		//direccion de la tarea (ENTRY_POINT)
+	stack_tarea[STACK_SIZE/4 - XPSR] = INIT_XPSR;				//necesario para bit thumb es el
+																// bit[9] de xPSR debe ser 1
+																//para habilitar alineación double-word
+	stack_tarea[STACK_SIZE/4 - PC_REG] = (uint32_t)tarea;		//dirección de la tarea (ENTRY_POINT)
 
 
 	/**
@@ -59,7 +61,7 @@ void os_InitTarea(void *tarea, uint32_t *stack_tarea, uint32_t *stack_pointer)  
 ***************************************************************************************************/
 void os_Init(void)  {
 	/*
-	 * Todas las interrupciones tienen prioridad 0 (la maxima) al iniciar la ejecucion. Para que
+	 * Todas las interrupciones tienen prioridad 0 (la máxima) al iniciar la ejecución. Para que
 	 * no se de la condicion de fault mencionada en la teoria, debemos bajar su prioridad en el
 	 * NVIC. La cuenta matematica que se observa da la probabilidad mas baja posible.
 	 */
@@ -80,7 +82,8 @@ void os_Init(void)  {
 void SysTick_Handler(void)  {
 
 	/**
-	 * Se setea el bit correspondiente a la excepcion PendSV
+	 * Se setea el bit correspondiente a la excepción PendSV
+	 * Habilita para que pueda ser llamada la PendSV
 	 */
 	SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
 
@@ -113,7 +116,7 @@ void SysTick_Handler(void)  {
 	 *  @return     El valor a cargar en MSP para apuntar al contexto de la tarea siguiente.
 ***************************************************************************************************/
 uint32_t getContextoSiguiente(uint32_t sp_actual)  {
-	static int32_t tarea_actual = -1;
+	static int32_t tarea_actual = -1;			/* Es una variable local y no se pierde */
 	uint32_t sp_siguiente;
 
 	/**

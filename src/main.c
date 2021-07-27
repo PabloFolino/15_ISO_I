@@ -13,8 +13,8 @@
 
 /*==================[Global data declaration]==============================*/
 
-uint32_t stack1[STACK_SIZE];		//espacio reservado para el stack de la tarea 1
-uint32_t stack2[STACK_SIZE];		//espacio reservado para el stack de la tarea 2
+uint32_t stack1[STACK_SIZE/4];		//espacio reservado para el stack de la tarea 1
+uint32_t stack2[STACK_SIZE/4];		//espacio reservado para el stack de la tarea 2
 
 uint32_t sp_tarea1;					//Stack Pointer para la tarea 1
 uint32_t sp_tarea2;					//Stack Pointer para la tarea 2
