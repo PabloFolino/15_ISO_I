@@ -13,9 +13,12 @@
 
 /*==================[Global data declaration]==============================*/
 
-tarea g_sTarea1, g_sTarea2,g_sTarea3;
-tarea g_sTarea4, g_sTarea5,g_sTarea6;
-tarea g_sTarea7, g_sTarea8,g_sTarea9;
+uint32_t stack1[STACK_SIZE];		//espacio reservado para el stack de la tarea 1
+uint32_t stack2[STACK_SIZE];		//espacio reservado para el stack de la tarea 2
+
+uint32_t sp_tarea1;					//Stack Pointer para la tarea 1
+uint32_t sp_tarea2;					//Stack Pointer para la tarea 2
+
 
 /*==================[internal functions declaration]=========================*/
 
@@ -37,8 +40,8 @@ static void initHardware(void)  {
 
 /*==================[Definicion de tareas para el OS]==========================*/
 void tarea1(void)  {
-	uint32_t h = 0;
-	uint32_t i = 0;
+	uint16_t h = 0;
+	uint16_t i = 0;
 	while (1) {
 		h++;
 		i++;
@@ -46,8 +49,8 @@ void tarea1(void)  {
 }
 
 void tarea2(void)  {
-	uint32_t j = 0;
-	uint32_t k = 0;
+	uint16_t j = 0;
+	uint16_t k = 0;
 
 	while (1) {
 		j++;
@@ -55,30 +58,16 @@ void tarea2(void)  {
 	}
 }
 
-void tarea3(void)  {
-	uint32_t l = 0;
-	uint32_t m = 0;
-
-	while (1) {
-		l++;
-		m++;
-	}
-}
-
-
-
 /*============================================================================*/
 
 int main(void)  {
 
 	initHardware();
 
-	os_InitTarea(tarea1, &g_sTarea1);
-	os_InitTarea(tarea2, &g_sTarea2);
-	os_InitTarea(tarea3, &g_sTarea3);
-
-
 	os_Init();
+
+	os_InitTarea(tarea1, &stack1, &sp_tarea1);
+	os_InitTarea(tarea2, &stack2, &sp_tarea2);
 
 	while (1) {
 	}
