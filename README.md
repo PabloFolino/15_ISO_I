@@ -9,7 +9,8 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
-Avances del último commit: 
+Avances del último commit 28/07 :
+ 
 	main.c y main.h
 	1) Se crea en tiempo de compilación las estructuras de las tareas.
 	2) Mediante una función se completa dicha estructura, inicializando entre otros el Stack de la tarea.
@@ -26,7 +27,7 @@ Avances del último commit:
 
 | Commit | Descripción | Cumplido |
 | :-: | :-: | :-: |
-[ | 1. El sistema operativo (de aquí en más nombrado como OS) será del tipo estático.| ✔ |
+[05/07] | 1. El sistema operativo (de aquí en más nombrado como OS) será del tipo estático.| ✔ |
 [05/07] | 2. La cantidad de tareas que soportara el OS será ocho. | x |
 [x.0] | 3. El OS debe administrar las IRQ del hardware.  | x |
 [x.0] | 4. El kernel debe poseer una estructura de control la cual contenga como mínimo los siguientes campos(). |   |
