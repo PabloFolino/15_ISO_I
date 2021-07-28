@@ -7,7 +7,13 @@
 
 #include "MSE_OS_Core.h"
 
+//======================= Es provisorio ================================================
+extern tarea estadoTarea1,estadoTarea2;
+//======================================================================================
 
+/*==================[Definición de variables globales]=================================*/
+
+static osControl control_OS;
 
 /*************************************************************************************************
 	 *  @brief Inicializa las tareas que correran en el OS.
@@ -22,30 +28,72 @@
 	 *  @param *stack_pointer   Puntero a la variable que almacena el stack pointer de la tarea.
 	 *  @return     None.
 ***************************************************************************************************/
-void os_InitTarea(void *tarea, uint32_t *stack_tarea, uint32_t *stack_pointer)  {
+void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
+	static uint8_t id = 0;				//el id sera correlativo a medida que se generen mas tareas
 
-	stack_tarea[STACK_SIZE/4 - XPSR] = INIT_XPSR;				//necesario para bit thumb es el
-																// bit[9] de xPSR debe ser 1
-																//para habilitar alineación double-word
-	stack_tarea[STACK_SIZE/4 - PC_REG] = (uint32_t)tarea;		//dirección de la tarea (ENTRY_POINT)
-
-
-	/**
-	 * El valor previo de LR (que es EXEC_RETURN en este caso) es necesario dado que
-	 * en esta implementacion, se llama a una funcion desde dentro del handler de PendSV
-	 * con lo que el valor de LR se modifica por la direccion de retorno para cuando
-	 * se termina de ejecutar getContextoSiguiente
-	 */
-	stack_tarea[STACK_SIZE/4 - LR_PREV_VALUE] = EXEC_RETURN;
-
-	/**
-	 * Notar que ahora, al agregar un registro mas al stack, la definicion de FULL_STACKING_SIZE
-	 * paso de ser 16 a ser 17
+	/*
+	 * Al principio se efectua un pequeño checkeo para determinar si llegamos a la cantidad maxima de
+	 * tareas que pueden definirse para este OS. En el caso de que se traten de inicializar mas tareas
+	 * que el numero maximo soportado, se guarda un codigo de error en la estructura de control del OS
+	 * y la tarea no se inicializa. La tarea idle debe ser exceptuada del conteo de cantidad maxima
+	 * de tareas
 	 */
 
-	*stack_pointer = (uint32_t) (stack_tarea + STACK_SIZE/4 - FULL_STACKING_SIZE);
+	if(control_OS.cantidad_Tareas < MAX_TASK_COUNT)  {				// Llegue al máximo de tareas
 
+		task->stack[STACK_SIZE/4 - XPSR] = INIT_XPSR;				//necesario para bit thumb
+		task->stack[STACK_SIZE/4 - PC_REG] = (uint32_t)entryPoint;	//direccion de la tarea (ENTRY_POINT)
+//		task->stack[STACK_SIZE/4 - LR] = (uint32_t)returnHook;		//Retorno de la tarea (no deberia darse)
+
+		/*
+		 * El valor previo de LR (que es EXEC_RETURN en este caso) es necesario dado que
+		 * en esta implementacion, se llama a una funcion desde dentro del handler de PendSV
+		 * con lo que el valor de LR se modifica por la direccion de retorno para cuando
+		 * se termina de ejecutar getContextoSiguiente
+		 */
+		task->stack[STACK_SIZE/4 - LR_PREV_VALUE] = EXEC_RETURN;
+
+		task->stack_pointer = (uint32_t) (task->stack + STACK_SIZE/4 - FULL_STACKING_SIZE);
+
+		/*
+		 * En esta seccion se guarda el entry point de la tarea, se le asigna id a la misma y se pone
+		 * la misma en estado READY. Todas las tareas se crean en estado READY.
+		 * Se asigna la prioridad de la misma.
+		 */
+		task->entry_point = entryPoint;
+		task->id = id;
+		task->estado = TAREA_READY;
+		task->prioridad = prioridad;
+
+		/*
+		 * Actualizacion de la estructura de control del OS, guardando el puntero a la estructura de tarea
+		 * que se acaba de inicializar, y se actualiza la cantidad de tareas definidas en el sistema.
+		 * Luego se incrementa el contador de id, dado que se le otorga un id correlativo a cada tarea
+		 * inicializada, segun el orden en que se inicializan.
+		 */
+//		control_OS.listaTareas[id] = task;
+//		control_OS.cantidad_Tareas++;
+//		control_OS.cantTareas_prioridad[prioridad]++;
+
+		id++;
+	}
+
+	else {
+		/*
+		 * En el caso que se hayan excedido la cantidad de tareas que se pueden definir, se actualiza
+		 * el ultimo error generado en la estructura de control del OS y se llama a errorHook y se
+		 * envia informacion de quien es quien la invoca.
+		 */
+//		os_setError(ERR_OS_CANT_TAREAS,os_InitTarea);
+	}
 }
+
+
+
+
+
+
+
 
 
 /*************************************************************************************************
@@ -131,8 +179,10 @@ uint32_t getContextoSiguiente(uint32_t sp_actual)  {
 	 * sp_siguiente el valor del stack pointer de la tarea2
 	 */
 	case 1:
-		sp_tarea1 = sp_actual;
-		sp_siguiente = sp_tarea2;
+//		control_OS.tarea_actual->stack_pointer = sp_actual;
+//		sp_siguiente = control_OS.tarea_siguiente->stack_pointer;
+		estadoTarea1.stack_pointer=sp_actual;
+		sp_siguiente =estadoTarea2.stack_pointer;
 		tarea_actual = 2;
 		break;
 
@@ -142,8 +192,10 @@ uint32_t getContextoSiguiente(uint32_t sp_actual)  {
 	 * sp_siguiente el valor del stack pointer de la tarea1
 	 */
 	case 2:
-		sp_tarea2 = sp_actual;
-		sp_siguiente = sp_tarea1;
+//		control_OS.tarea_actual->stack_pointer = sp_actual;
+//		sp_siguiente = control_OS.tarea_siguiente->stack_pointer;
+		estadoTarea2.stack_pointer=sp_actual;
+		sp_siguiente =estadoTarea1.stack_pointer;
 		tarea_actual = 1;
 		break;
 
@@ -153,10 +205,15 @@ uint32_t getContextoSiguiente(uint32_t sp_actual)  {
 	 */
 
 	default:
-		sp_siguiente = sp_tarea1;
+		sp_siguiente = estadoTarea1.stack_pointer;
+		//control_OS.tarea_actual->stack_pointer = sp_actual;
 		tarea_actual = 1;
 		break;
 	}
 
 	return sp_siguiente;
 }
+
+
+
+

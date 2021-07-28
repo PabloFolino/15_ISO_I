@@ -12,13 +12,7 @@
 #define MILISEC		1000
 
 /*==================[Global data declaration]==============================*/
-
-uint32_t stack1[STACK_SIZE/4];		//espacio reservado para el stack de la tarea 1
-uint32_t stack2[STACK_SIZE/4];		//espacio reservado para el stack de la tarea 2
-
-uint32_t sp_tarea1;					//Stack Pointer para la tarea 1
-uint32_t sp_tarea2;					//Stack Pointer para la tarea 2
-
+tarea estadoTarea1,estadoTarea2;	// Reservo espacio para el estado de cada tarea
 
 /*==================[internal functions declaration]=========================*/
 
@@ -66,10 +60,12 @@ int main(void)  {
 
 	os_Init();
 
-	os_InitTarea(tarea1, &stack1, &sp_tarea1);
-	os_InitTarea(tarea2, &stack2, &sp_tarea2);
+	os_InitTarea(tarea1, &estadoTarea1,PRIORIDAD_0);
+	os_InitTarea(tarea2, &estadoTarea2,PRIORIDAD_0);
+//	os_InitTarea(tarea1, &stack1, &sp_tarea1);
+//	os_InitTarea(tarea2, &stack2, &sp_tarea2);
 
-	while (1) {
+	while (1) {					// Se queda esperando
 	}
 }
 

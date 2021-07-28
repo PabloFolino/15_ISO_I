@@ -58,21 +58,99 @@
 
 
 /************************************************************************************
- * 						Definiciones varias
+ * 						Definiciones constantes del Sistema Operativo
  ***********************************************************************************/
-#define STACK_FRAME_SIZE			8
+#define STACK_FRAME_SIZE			8	//
 #define FULL_STACKING_SIZE 			17	//16 core registers + valor previo de LR
+
+
+#define MAX_TASK_COUNT				8	// Cantidad máxima de tareas para este OS
+
+#define MAX_PRIORITY				0	// Máxima prioridad que puede tener una tarea
+#define MIN_PRIORITY				3	// Mínima prioridad que puede tener una tarea
+#define PRIORITY_COUNT		(MIN_PRIORITY-MAX_PRIORITY)+1	//cantidad de prioridades asignables
+
 
 
 /*==================[definición de datos externa]=================================*/
 
-extern uint32_t sp_tarea1;					//Stack Pointer para la tarea 1
-extern uint32_t sp_tarea2;					//Stack Pointer para la tarea 2
+//extern uint32_t sp_tarea1;					//Stack Pointer para la tarea 1
+//extern uint32_t sp_tarea2;					//Stack Pointer para la tarea 2
+
+
+
+/*===========[Definición de datos para el SiStema Operativo]=======================*/
+
+/********************************************************************************
+ * Definición de los estados posibles para las tareas
+ *******************************************************************************/
+
+enum _estadoTarea  {
+	TAREA_READY,
+	TAREA_RUNNING,
+	TAREA_BLOCKED,
+	TAREA_SUSPENDED
+};
+
+typedef enum _estadoTarea estadoTarea;
+
+
+/********************************************************************************
+ * Definición de las prioridades
+ *******************************************************************************/
+
+enum _prioridad  {
+	PRIORIDAD_0,
+	PRIORIDAD_1,
+	PRIORIDAD_2,
+	PRIORIDAD_3
+};
+
+typedef enum _prioridad prioridadTarea;
+
+/********************************************************************************
+ * Definición de la estructura de cada tarea
+ *******************************************************************************/
+struct _tarea  {
+	uint32_t stack[STACK_SIZE/4];	// Longitud del Stack
+	uint32_t stack_pointer;			// Puntero al Stack
+	void *entry_point;				// Puntero al inicio de la tarea
+	uint8_t id;						// Número que identifica la tarea
+	estadoTarea estado;             // Estado de la tarea
+	prioridadTarea prioridad;		// Prioridad de la tarea 0(mayor prioridad) al 3
+	uint32_t ticks_bloqueada;		// cantidad de ticks que la tarea debe
+									// permanecer bloqueada
+};
+
+typedef struct _tarea tarea;
+
+
+
+/********************************************************************************
+ * Definición de la estructura de control para el Sistema Operativo
+ *******************************************************************************/
+struct _osControl  {
+//	void *listaTareas[MAX_TASK_COUNT];			//array de punteros a tareas
+//	int32_t error;								//variable que contiene el ultimo error generado
+	uint8_t cantidad_Tareas;					//cantidad de tareas definidas por el usuario
+//	uint8_t cantTareas_prioridad[PRIORITY_COUNT];	//cada posicion contiene cuantas tareas tienen la misma prioridad
+//
+//	estadoOS estado_sistema;					//Informacion sobre el estado del OS
+//	bool cambioContextoNecesario;
+//	bool schedulingFromIRQ;						//esta bandera se utiliza para la atencion a interrupciones
+//	int16_t contador_critico;					//Contador de secciones criticas solicitadas
+//
+	tarea *tarea_actual;						//definicion de puntero para tarea actual
+	tarea *tarea_siguiente;						//definicion de puntero para tarea siguiente
+};
+typedef struct _osControl osControl;
+
+
 
 
 /*==================[definición de prototipos]=================================*/
 
-void os_InitTarea(void *tarea, uint32_t *stack, uint32_t *stack_pointer);
+void os_InitTarea(void *entryPoint, tarea *task, uint8_t prioridad);
 void os_Init(void);
 
 

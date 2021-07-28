@@ -9,12 +9,25 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
+Avances del último commit: 
+	main.c y main.h
+	1) Se crea en tiempo de compilación las estructuras de las tareas.
+	2) Mediante una función se completa dicha estructura, inicializando entre otros el Stack de la tarea.
+	
+	MSE_OS_CORE.c y MSE_OS_CORE.h
+	1) Se genera la estructura de control para cada tarea.Falta funcionalidad en "Estado de Ejecución" ,"Ticks bloqueada" y "Prioridad".
+	2) Se genera una estructura inicial del kernel del S.O.
+	3) Se genera una estructura para los estados posibles de prioridad, posee funcionalidad parcial.
+	4) Se genera una estructura para los estados posibles de estado de la tarea, pero todavía carece de funcionalidad.
+
+
+
 # Requerimientos del Sistema Operativo
 
-| Versión | Descripción | Cumplido |
+| Commit | Descripción | Cumplido |
 | :-: | :-: | :-: |
-[1.0] | 1. El sistema operativo (de aquí en más nombrado como OS) será del tipo estático.| ✔ |
-[x.0] | 2. La cantidad de tareas que soportara el OS será ocho. | x |
+[ | 1. El sistema operativo (de aquí en más nombrado como OS) será del tipo estático.| ✔ |
+[05/07] | 2. La cantidad de tareas que soportara el OS será ocho. | x |
 [x.0] | 3. El OS debe administrar las IRQ del hardware.  | x |
 [x.0] | 4. El kernel debe poseer una estructura de control la cual contenga como mínimo los siguientes campos(). |   |
 [x.0] | 4.a. Último error ocurrido | x |
@@ -23,13 +36,13 @@ Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_
 [x.0] | 4.d. Puntero a la tarea en ejecución.| x |
 [x.0] | 4.e. Puntero a la siguiente tarea a ejecutar. | x |
 [x.0] | 5. Cada tarea tendrá asociada una estructura de control que, como mínimo, tendrá los siguientes campos: |   |
-[x.0] | 5.a. Stack (array). | x |
-[x.0] | 5.b. Stack Pointer. | x |
-[x.0] | 5.c. Punto de entrada (usualmente llamado ​ entryPoint ).| x |
-[x.0] | 5.d. Estado de ejecución. | x |
-[x.0] | 5.e. Prioridad. | x |
-[x.0] | 5.f.Número de ID. | x |
-[x.0] | 5.g. Ticks bloqueada.| x |
+[28/07] | 5.a. Stack (array). | ✔ |
+[28/07] | 5.b. Stack Pointer. | ✔ |
+[28/07] | 5.c. Punto de entrada (usualmente llamado ​ entryPoint ).| ✔ |
+[28/07] | 5.d. Estado de ejecución. | x |
+[28/07] | 5.e. Prioridad. | x |
+[28/07] | 5.f. Número de ID. | ✔ |
+[28/07] | 5.g. Ticks bloqueada.| x |
 [x.0] | 6. Los estados de ejecución de una tarea serán los siguientes: |   |
 [x.0] | 6.a. Corriendo (Running). | x |
 [x.0] | 6.b. Lista para ejecución (Ready). | x |
