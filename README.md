@@ -9,17 +9,20 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
-Avances del último commit 28/07 :
+Avances del último commit 30/07 :
  
 	main.c y main.h
 	1) Se crea en tiempo de compilación las estructuras de las tareas.
 	2) Mediante una función se completa dicha estructura, inicializando entre otros el Stack de la tarea.
+	3) Se prueba el sistema con tres tareas que manejan leds.
 	
 	MSE_OS_CORE.c y MSE_OS_CORE.h
-	1) Se genera la estructura de control para cada tarea.Falta funcionalidad en "Estado de Ejecución" ,"Ticks bloqueada" y "Prioridad".
+	1) Se genera la estructura de control para cada tarea.Falta funcionalidad en "Ticks bloqueada" y "Prioridad".
+	2) Las tareas pasan de READY a RUNNING.
 	2) Se genera una estructura inicial del kernel del S.O.
 	3) Se genera una estructura para los estados posibles de prioridad, posee funcionalidad parcial.
 	4) Se genera una estructura para los estados posibles de estado de la tarea, pero todavía carece de funcionalidad.
+	5) Se crea la función setPendSV(), y la scheduler().
 
 
 
@@ -34,7 +37,7 @@ Avances del último commit 28/07 :
 [x.0] | 4.a. Último error ocurrido | x |
 [x.0] | 4.b. Estado de sistema operativo, por ejemplo: Reset, corriendo normal, interrupción,etc. | x |
 [x.0] | 4.c. Bandera que indique la necesidad de ejecutar un scheduling al salir de una IRQ.| x |
-[x.0] | 4.d. Puntero a la tarea en ejecución.| x |
+[x.0] | 4.d. Puntero a la tarea en ejecución.| ✔ |
 [x.0] | 4.e. Puntero a la siguiente tarea a ejecutar. | x |
 [x.0] | 5. Cada tarea tendrá asociada una estructura de control que, como mínimo, tendrá los siguientes campos: |   |
 [28/07] | 5.a. Stack (array). | ✔ |
@@ -45,8 +48,8 @@ Avances del último commit 28/07 :
 [28/07] | 5.f. Número de ID. | ✔ |
 [28/07] | 5.g. Ticks bloqueada.| x |
 [x.0] | 6. Los estados de ejecución de una tarea serán los siguientes: |   |
-[x.0] | 6.a. Corriendo (Running). | x |
-[x.0] | 6.b. Lista para ejecución (Ready). | x |
+[30/07] | 6.a. Corriendo (Running). | ✔ |
+[30/07] | 6.b. Lista para ejecución (Ready). | ✔ |
 [x.0] | 6.c. Bloqueada (Blocked).| x |
 [x.0] | 6.d. Suspendida (Suspended) - ​ Opcional | x |
 [x.0] | 7. El tamaño de stack para cada tarea será de 256 bytes. | ✔ |
@@ -64,4 +67,15 @@ Avances del último commit 28/07 :
 [x.0] | 12.c. Colas (​ queue ).| x |
 [x.0] | 12.d. Secciones críticas. | x |
 [x.0] | 12.e. Forzado de Scheduling (​ cpu yield ). | x |
+
+
+El programa posee los siguientes módulos principales:
+
+En el main.c:
+![](/imagenes/diagrama_principal.png)
+
+En el MSE_OS_Core.c y PendSV_Handler.S:
+
+![](/imagenes/diagrama1.png)
+
 

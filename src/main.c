@@ -7,14 +7,14 @@
 #include "MSE_OS_Core.h"
 
 
-/*==================[macros and definitions]=================================*/
+/*==================[Macros and definitions]=================================*/
 
 #define MILISEC		1000		// Con 1000 el systick=1ms
 #define VALOR		1000
 #define RESET_C		1000000
 
 /*==================[Global data declaration]==============================*/
-tarea estadoTarea1,estadoTarea2;	// Reservo espacio para el estado de cada tarea
+tarea estadoTarea1,estadoTarea2,estadoTarea3;	// Reservo espacio para el estado de cada tarea
 
 /*==================[internal functions declaration]=========================*/
 
@@ -47,8 +47,10 @@ void tarea1(void)  {
 	while (1) {
 		h++;
 		i++;
-		if(h==VALOR & i==VALOR) Board_LED_Toggle(LEDS_LED1);
-		if(h==RESET_C & i==RESET_C){
+		if(h==VALOR && i==VALOR){
+			Board_LED_Toggle(LEDS_LED1);
+		}
+		if(h==RESET_C && i==RESET_C){
 				h=0;
 				i=0;
 				}
@@ -61,10 +63,28 @@ void tarea2(void)  {
 	while (1) {
 		j++;
 		k++;
-		if(j==VALOR & k==VALOR) Board_LED_Toggle(LEDS_LED2);
-		if(j==RESET_C & k==RESET_C){
+		if(j==VALOR && k==VALOR){
+			Board_LED_Toggle(LEDS_LED2);
+		}
+		if(j==RESET_C && k==RESET_C){
 				j=0;
 				k=0;
+		}
+	}
+}
+
+void tarea3(void)  {
+	uint32_t r = 0;
+	uint32_t s = 0;
+	while (1) {
+		r++;
+		s++;
+		if(r==VALOR && s==VALOR){
+			Board_LED_Toggle(LEDS_LED3);
+		}
+		if(r==RESET_C && s==RESET_C){
+				r=0;
+				s=0;
 		}
 	}
 }
@@ -76,10 +96,13 @@ int main(void)  {
 
 	initHardware();
 
-	os_Init();
 
 	os_InitTarea(tarea1, &estadoTarea1,PRIORIDAD_0);
 	os_InitTarea(tarea2, &estadoTarea2,PRIORIDAD_0);
+	os_InitTarea(tarea3, &estadoTarea3,PRIORIDAD_0);
+
+
+	os_Init();					// Ejecuta el Sistema Operativo
 
 
 	while (1) {					// Se queda esperando

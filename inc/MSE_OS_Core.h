@@ -64,7 +64,7 @@
 #define FULL_STACKING_SIZE 			17	//16 core registers + valor previo de LR
 
 
-#define MAX_TASK_COUNT				8	// Cantidad máxima de tareas para este OS
+#define MAX_TASK_COUNT				10	// Cantidad máxima de tareas para este OS
 
 #define MAX_PRIORITY				0	// Máxima prioridad que puede tener una tarea
 #define MIN_PRIORITY				3	// Mínima prioridad que puede tener una tarea
@@ -124,34 +124,47 @@ struct _tarea  {
 
 typedef struct _tarea tarea;
 
+/********************************************************************************
+ * Definición de los estados posibles del OS
+ *******************************************************************************/
 
+enum _estadoOS  {
+	OS_FROM_RESET,				//inicio luego de un reset
+	OS_NORMAL_RUN,				//estado del sistema corriendo una tarea
+	OS_SCHEDULING,				//el OS esta efectuando un scheduling
+	OS_IRQ_RUN					//El OS esta corriendo un Handler
+
+};
+
+typedef enum _estadoOS estadoOS;
 
 /********************************************************************************
  * Definición de la estructura de control para el Sistema Operativo
  *******************************************************************************/
 struct _osControl  {
-//	void *listaTareas[MAX_TASK_COUNT];			//array de punteros a tareas
+	void *listaTareas[MAX_TASK_COUNT];			//array de punteros a tareas
 //	int32_t error;								//variable que contiene el ultimo error generado
 	uint8_t cantidad_Tareas;					//cantidad de tareas definidas por el usuario
 //	uint8_t cantTareas_prioridad[PRIORITY_COUNT];	//cada posicion contiene cuantas tareas tienen la misma prioridad
 //
-//	estadoOS estado_sistema;					//Informacion sobre el estado del OS
-//	bool cambioContextoNecesario;
+	estadoOS estado_sistema;					//Informacion sobre el estado del OS
+	bool cambioContextoNecesario;
 //	bool schedulingFromIRQ;						//esta bandera se utiliza para la atencion a interrupciones
 //	int16_t contador_critico;					//Contador de secciones criticas solicitadas
 //
 	tarea *tarea_actual;						//definicion de puntero para tarea actual
 	tarea *tarea_siguiente;						//definicion de puntero para tarea siguiente
 };
+
 typedef struct _osControl osControl;
 
 
 
 
 /*==================[definición de prototipos]=================================*/
-
+void os_Init(void);				// Inicia el Sistema Operativo
 void os_InitTarea(void *entryPoint, tarea *task, uint8_t prioridad);
-void os_Init(void);
+
 
 
 

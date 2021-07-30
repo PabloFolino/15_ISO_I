@@ -8,20 +8,60 @@
 #include "MSE_OS_Core.h"
 
 //======================= Es provisorio ================================================
-extern tarea estadoTarea1,estadoTarea2;
+
+
+
 //======================================================================================
+
+/*==================[Deaclaración de funciones locales]================================*/
+static void scheduler(void);
+
 
 /*==================[Definición de variables globales]=================================*/
 
 static osControl control_OS;
 
 /*************************************************************************************************
+	 *  @brief Inicializa el OS.
+     *
+     *  @details
+     *   Inicializa el OS seteando la prioridad de PendSV como la mas baja posible. Es setear
+     *   la prioridad de PendSV antes de que inicie el sistema.
+     *   Se llama esta función luego de inicializar cada tareas.
+     *
+	 *  @param 		None.
+	 *  @return     None.
+***************************************************************************************************/
+void os_Init(void)  {
+	/*
+	 * Todas las interrupciones tienen prioridad 0 (la máxima) al iniciar la ejecución. Para que
+	 * no se de la condicion de fault mencionada en la teoria, debemos bajar su prioridad en el
+	 * NVIC. La cuenta matematica que se observa da la probabilidad mas baja posible.
+	 */
+	NVIC_SetPriority(PendSV_IRQn, (1 << __NVIC_PRIO_BITS)-1);
+
+	// Se configura las variables de estado del S.O.
+	control_OS.estado_sistema=OS_FROM_RESET;
+	control_OS.tarea_actual=NULL;
+	control_OS.tarea_siguiente=NULL;
+
+	/* En control_OS.listaTareas[] se tiene los punteros de cada tarea y en
+	 * control_OS.cantidad_Tareas se tiene la cantidad de tareas instanciadas.
+	 * Se conpleta el resto del vector con NULL
+	 */
+	for(uint8_t c=control_OS.cantidad_Tareas+1;c<MAX_TASK_COUNT;c++){
+		control_OS.listaTareas[c]=NULL;
+	}
+}
+
+
+/*************************************************************************************************
 	 *  @brief Inicializa las tareas que correran en el OS.
      *
      *  @details
      *   Inicializa una tarea para que pueda correr en el OS implementado.
-     *   Es necesario llamar a esta funcion para cada tarea antes que inicie
-     *   el OS.
+     *   Es necesario llamar a esta funcion para cada tarea antes que inicie el OS.
+     *   Setea la PRIORIDAD de la tarea, los ticks_bloqueada=0, y estado = TAREA_READY
      *
 	 *  @param *tarea			Puntero a la tarea que se desea inicializar.
 	 *  @param *stack			Puntero al espacio reservado como stack para la tarea.
@@ -64,6 +104,7 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 		task->id = id;
 		task->estado = TAREA_READY;
 		task->prioridad = prioridad;
+		task->ticks_bloqueada=0;
 
 		/*
 		 * Actualizacion de la estructura de control del OS, guardando el puntero a la estructura de tarea
@@ -71,10 +112,9 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 		 * Luego se incrementa el contador de id, dado que se le otorga un id correlativo a cada tarea
 		 * inicializada, segun el orden en que se inicializan.
 		 */
-//		control_OS.listaTareas[id] = task;
-//		control_OS.cantidad_Tareas++;
+		control_OS.cantidad_Tareas=id;     		// Informo al S.O. la cantidad de tareas
+		control_OS.listaTareas[id] = task;		// Se carga los punteros de cada tarea
 //		control_OS.cantTareas_prioridad[prioridad]++;
-
 		id++;
 	}
 
@@ -89,45 +129,16 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 }
 
 
-
-
-
-
-
-
-
 /*************************************************************************************************
-	 *  @brief Inicializa el OS.
+	 *  @brief setPendSV Handler.
      *
      *  @details
-     *   Inicializa el OS seteando la prioridad de PendSV como la mas baja posible. Es necesario
-     *   llamar esta funcion antes de que inicie el sistema. Es recomendable llamarla luego de
-     *   inicializar las tareas
+     *  Dentro se setea como pendiente la excepcion PendSV.
      *
 	 *  @param 		None.
 	 *  @return     None.
 ***************************************************************************************************/
-void os_Init(void)  {
-	/*
-	 * Todas las interrupciones tienen prioridad 0 (la máxima) al iniciar la ejecución. Para que
-	 * no se de la condicion de fault mencionada en la teoria, debemos bajar su prioridad en el
-	 * NVIC. La cuenta matematica que se observa da la probabilidad mas baja posible.
-	 */
-	NVIC_SetPriority(PendSV_IRQn, (1 << __NVIC_PRIO_BITS)-1);
-}
-
-
-/*************************************************************************************************
-	 *  @brief SysTick Handler.
-     *
-     *  @details
-     *   El handler del Systick no debe estar a la vista del usuario. Dentro se setea como
-     *   pendiente la excepcion PendSV.
-     *
-	 *  @param 		None.
-	 *  @return     None.
-***************************************************************************************************/
-void SysTick_Handler(void)  {
+void setPendSV(void)  {
 
 	/**
 	 * Se setea el bit correspondiente a la excepción PendSV
@@ -149,8 +160,6 @@ void SysTick_Handler(void)  {
 }
 
 
-
-
 /*************************************************************************************************
 	 *  @brief Funcion para determinar el proximo contexto.
      *
@@ -164,56 +173,127 @@ void SysTick_Handler(void)  {
 	 *  @return     El valor a cargar en MSP para apuntar al contexto de la tarea siguiente.
 ***************************************************************************************************/
 uint32_t getContextoSiguiente(uint32_t sp_actual)  {
-	static int32_t tarea_actual = -1;			/* Es una variable local y no se pierde */
 	uint32_t sp_siguiente;
 
-	/**
-	 * Este bloque switch-case hace las veces de scheduler. Es el mismo codigo que
-	 * estaba anteriormente implementado en el Systick handler
-	 */
-	switch(tarea_actual)  {
-
-	/**
-	 * Tarea actual es tarea1. Recuperamos el stack pointer (MSP) y lo
-	 * almacenamos en sp_tarea1. Luego cargamos en la variable de retorno
-	 * sp_siguiente el valor del stack pointer de la tarea2
-	 */
-	case 1:
-//		control_OS.tarea_actual->stack_pointer = sp_actual;
-//		sp_siguiente = control_OS.tarea_siguiente->stack_pointer;
-		estadoTarea1.stack_pointer=sp_actual;
-		sp_siguiente =estadoTarea2.stack_pointer;
-		tarea_actual = 2;
-		break;
-
-	/**
-	 * Tarea actual es tarea2. Recuperamos el stack pointer (MSP) y lo
-	 * almacenamos en sp_tarea2. Luego cargamos en la variable de retorno
-	 * sp_siguiente el valor del stack pointer de la tarea1
-	 */
-	case 2:
-//		control_OS.tarea_actual->stack_pointer = sp_actual;
-//		sp_siguiente = control_OS.tarea_siguiente->stack_pointer;
-		estadoTarea2.stack_pointer=sp_actual;
-		sp_siguiente =estadoTarea1.stack_pointer;
-		tarea_actual = 1;
-		break;
-
-	/**
-	 * Este es el caso del inicio del sistema, donde no se ha llegado aun a la
-	 * primer ejecucion de tarea1. Por lo que se cargan los valores correspondientes
+	/*
+	 * Esta funcion efectua el cambio de contexto. Se guarda el MSP (sp_actual) en la variable
+	 * correspondiente de la estructura de la tarea corriendo actualmente.
+	 * Se carga en la variable sp_siguiente el stack pointer de la tarea siguiente, que fue
+	 * definida por el scheduler. Se actualiza la misma a estado RUNNING
+	 * y se retorna al handler de PendSV
 	 */
 
-	default:
-		sp_siguiente = estadoTarea1.stack_pointer;
-		//control_OS.tarea_actual->stack_pointer = sp_actual;
-		tarea_actual = 1;
-		break;
+
+	// Se guarda el contexto de la tarea actual y paso a TAREA_READY
+	// Se supone que la tarea estaba en TAREA_RUNNING
+	if(control_OS.estado_sistema==OS_FROM_RESET){
+		sp_siguiente = control_OS.tarea_siguiente->stack_pointer;
+		}
+	else{
+		control_OS.tarea_actual->stack_pointer = sp_actual;
+		control_OS.tarea_actual->estado = TAREA_READY;
 	}
+
+
+	// Se cambia a la tarea siguiente
+	sp_siguiente = control_OS.tarea_siguiente->stack_pointer;
+	control_OS.tarea_actual = control_OS.tarea_siguiente;
+	control_OS.tarea_actual->estado = TAREA_RUNNING;
+
+	/*
+	 * Indicamos que luego de retornar de esta funcion, ya no es necesario un cambio de contexto
+	 * porque se acaba de gestionar.
+	 */
+	control_OS.estado_sistema = OS_NORMAL_RUN;
 
 	return sp_siguiente;
 }
 
+/*************************************************************************************************
+	 *  @brief SysTick Handler.
+     *
+     *  @details
+     *   El handler del Systick no debe estar a la vista del usuario. En este handler se llama al
+     *   scheduler y luego de determinarse cual es la tarea siguiente a ejecutar, se setea como
+     *   pendiente la excepcion PendSV.
+     *
+	 *  @param 		None.
+	 *  @return     None.
+***************************************************************************************************/
+void SysTick_Handler(void)  {
+//	uint8_t id_tarea;
+//	tarea* task;		//variable para legibilidad
+
+	/*
+	 * Actualiza ticks_bloqueada de cada tare y si tienen un valor de ticks de bloqueo mayor
+	 * a cero, se decrementan en una unidad. Si este contador llega a cero, entonces
+	 * se debe pasar la tarea a READY.
+	 */
+//	id_tarea = 0;
+//	while (control_OS.listaTareas[id_tarea] != NULL)  {
+//		task = (tarea*)control_OS.listaTareas[id_tarea];
+//
+//		if( task->ticks_bloqueada > 0 )  {
+//			if((--task->ticks_bloqueada == 0) && (task->estado == TAREA_BLOCKED))  {
+//				task->estado = TAREA_READY;
+//			}
+//		}
+//
+//		id_tarea++;
+//	}
+
+	/*
+	 * Dentro del SysTick handler se llama al scheduler. Separar el scheduler de
+	 * getContextoSiguiente da libertad para cambiar la politica de scheduling en cualquier
+	 * estadio de desarrollo del OS. Recordar que scheduler() debe ser lo mas corto posible
+	 */
+
+	scheduler();
+
+}
+
+/*************************************************************************************************
+	 *  @brief Funcion que efectua las decisiones de scheduling.
+     *
+     *  @details
+     *   Segun el critero al momento de desarrollo, determina que tarea debe ejecutarse luego, y
+     *   por lo tanto provee los punteros correspondientes para el cambio de contexto. Esta
+     *   implementacion de scheduler es muy sencilla, del tipo Round-Robin
+     *
+	 *  @param 		None.
+	 *  @return     None.
+***************************************************************************************************/
+static void scheduler(void)  {
+
+	static uint8_t id_tarea;
 
 
+	/* Si vengo de un RESET del S.O. se carga la primer tarea de la cola
+	 * Por ahora hace de scheduler, sin tomar en cuenta las prioridades
+	 * ni el estado de las tareas.
+	 * Se supone que como mínimo hay dos tareas.
+	 */
+	if(control_OS.estado_sistema==OS_FROM_RESET){
+		//control_OS.estado_sistema=OS_NORMAL_RUN;
+		control_OS.tarea_siguiente=control_OS.listaTareas[id_tarea];
+		id_tarea++;
+		}
+	else{
+		if(id_tarea<control_OS.cantidad_Tareas+1){
+			control_OS.tarea_siguiente=control_OS.listaTareas[id_tarea];
+			id_tarea++;
+			}
+		else{
+			id_tarea=0;
+			control_OS.tarea_siguiente=control_OS.listaTareas[id_tarea];
+			id_tarea++;
+		}
+	}
+	// Por ahora el cambio de contexto siempre es necesario
+	control_OS.cambioContextoNecesario=true;
+	if(control_OS.cambioContextoNecesario)
+		setPendSV();
 
+}
+
+//
