@@ -38,7 +38,7 @@ Avances del último commit 30/07 :
 [x.0] | 4.b. Estado de sistema operativo, por ejemplo: Reset, corriendo normal, interrupción,etc. | x |
 [x.0] | 4.c. Bandera que indique la necesidad de ejecutar un scheduling al salir de una IRQ.| x |
 [x.0] | 4.d. Puntero a la tarea en ejecución.| ✔ |
-[x.0] | 4.e. Puntero a la siguiente tarea a ejecutar. | x |
+[x.0] | 4.e. Puntero a la siguiente tarea a ejecutar. | ✔ |
 [x.0] | 5. Cada tarea tendrá asociada una estructura de control que, como mínimo, tendrá los siguientes campos: |   |
 [28/07] | 5.a. Stack (array). | ✔ |
 [28/07] | 5.b. Stack Pointer. | ✔ |
@@ -72,10 +72,10 @@ Avances del último commit 30/07 :
 El programa posee los siguientes módulos principales:
 
 En el main.c:
-![](/imagenes/diagrama_principal.png)
+![](/documento/diagrama_principal.png)
 
 En el MSE_OS_Core.c y PendSV_Handler.S:
 
-![](/imagenes/diagrama1.png)
+![](/documento/diagrama1.png)
 
 
