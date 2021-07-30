@@ -72,10 +72,12 @@ Avances del último commit 30/07 :
 El programa posee los siguientes módulos principales:
 
 En el main.c:
+
 ![](/documento/diagrama_principal.png)
+
 
 En el MSE_OS_Core.c y PendSV_Handler.S:
 
-![](/documento/diagrama1.png)
+![](/documento/diagrama.png)
 
 
