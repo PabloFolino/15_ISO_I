@@ -9,20 +9,20 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
-Avances del último commit 30/07 :
+Avances del último commit 31/07 :
  
 	main.c y main.h
 	1) Se crea en tiempo de compilación las estructuras de las tareas.
 	2) Mediante una función se completa dicha estructura, inicializando entre otros el Stack de la tarea.
-	3) Se prueba el sistema con tres tareas que manejan leds.
+	3) Se prueba el sistema con cuatro tareas que manejan leds, y algunas se suspenden usando delayTareas().
 	
 	MSE_OS_CORE.c y MSE_OS_CORE.h
-	1) Se genera la estructura de control para cada tarea.Falta funcionalidad en "Ticks bloqueada" y "Prioridad".
-	2) Las tareas pasan de READY a RUNNING.
-	2) Se genera una estructura inicial del kernel del S.O.
-	3) Se genera una estructura para los estados posibles de prioridad, posee funcionalidad parcial.
-	4) Se genera una estructura para los estados posibles de estado de la tarea, pero todavía carece de funcionalidad.
-	5) Se crea la función setPendSV(), y la scheduler().
+	1) Se genera la estructura de control para cada tarea. Se implementa Prioridades y ticks de bloqueo.
+	2) Las tareas pasan de READY, RUNNING y a BLOCKED.
+	2) Se complementa la estructura del kernel del S.O.
+	4) Se crea actuliza la función setPendSV(), y la scheduler().
+	5) Se genera la función de la función delayTarea().
+	6) Para hacer el Round-Robin se crea una función específica.
 
 
 
@@ -31,33 +31,33 @@ Avances del último commit 30/07 :
 | Commit | Descripción | Cumplido |
 | :-: | :-: | :-: |
 [05/07] | 1. El sistema operativo (de aquí en más nombrado como OS) será del tipo estático.| ✔ |
-[05/07] | 2. La cantidad de tareas que soportara el OS será ocho. | x |
+[05/07] | 2. La cantidad de tareas que soportara el OS será ocho. | ✔ |
 [x.0] | 3. El OS debe administrar las IRQ del hardware.  | x |
 [x.0] | 4. El kernel debe poseer una estructura de control la cual contenga como mínimo los siguientes campos(). |   |
 [x.0] | 4.a. Último error ocurrido | x |
-[x.0] | 4.b. Estado de sistema operativo, por ejemplo: Reset, corriendo normal, interrupción,etc. | x |
+[31/07] | 4.b. Estado de sistema operativo, por ejemplo: Reset, corriendo normal, interrupción,etc. | ✔ |
 [x.0] | 4.c. Bandera que indique la necesidad de ejecutar un scheduling al salir de una IRQ.| x |
-[x.0] | 4.d. Puntero a la tarea en ejecución.| ✔ |
-[x.0] | 4.e. Puntero a la siguiente tarea a ejecutar. | ✔ |
+[31/07] | 4.d. Puntero a la tarea en ejecución.| ✔ |
+[31/07] | 4.e. Puntero a la siguiente tarea a ejecutar. | ✔ |
 [x.0] | 5. Cada tarea tendrá asociada una estructura de control que, como mínimo, tendrá los siguientes campos: |   |
 [28/07] | 5.a. Stack (array). | ✔ |
 [28/07] | 5.b. Stack Pointer. | ✔ |
 [28/07] | 5.c. Punto de entrada (usualmente llamado ​ entryPoint ).| ✔ |
-[28/07] | 5.d. Estado de ejecución. | x |
-[28/07] | 5.e. Prioridad. | x |
+[28/07] | 5.d. Estado de ejecución. | ✔ |
+[28/07] | 5.e. Prioridad. | ✔ |
 [28/07] | 5.f. Número de ID. | ✔ |
-[28/07] | 5.g. Ticks bloqueada.| x |
+[28/07] | 5.g. Ticks bloqueada.| ✔ |
 [x.0] | 6. Los estados de ejecución de una tarea serán los siguientes: |   |
 [30/07] | 6.a. Corriendo (Running). | ✔ |
 [30/07] | 6.b. Lista para ejecución (Ready). | ✔ |
-[x.0] | 6.c. Bloqueada (Blocked).| x |
+[31/07] | 6.c. Bloqueada (Blocked).| ✔ |
 [x.0] | 6.d. Suspendida (Suspended) - ​ Opcional | x |
-[x.0] | 7. El tamaño de stack para cada tarea será de 256 bytes. | ✔ |
-[x.0] | 8. La implementación de prioridades será de 4 niveles, donde el nivel cero (0) será el de más alta prioridad y tres (3) será el nivel de menor prioridad. | x |
-[x.0] | 9. La política de scheduling entre tareas de la misma prioridad será del tipo Round-Robin. | x |
-[x.0] | 10. El tick del sistema será de 1 [ms].| ✔ |
+[28/07] | 7. El tamaño de stack para cada tarea será de 256 bytes. | ✔ |
+[31/07] | 8. La implementación de prioridades será de 4 niveles, donde el nivel cero (0) será el de más alta prioridad y tres (3) será el nivel de menor prioridad. | ✔ |
+[31/07] | 9. La política de scheduling entre tareas de la misma prioridad será del tipo Round-Robin. | ✔ |
+[05/07] | 10. El tick del sistema será de 1 [ms].| ✔ |
 [x.0] | 11. El OS debe tener ​ hooks ​ definidos como funciones ​ WEAK​ para la ejecución de código en las siguientes condiciones: |   |
-[x.0] | 11.a. Tick del sistema (​ tickHook ). | x |
+[31/07] | 11.a. Tick del sistema (​ tickHook ). | ✔ |
 [x.0] | 11.b. Ejecución de código en segundo plano (​ taskIdle ). | x |
 [x.0] | 11.c. Error y retorno de una de las tareas (​ returnHook ​ ).| x |
 [x.0] | 11.d. Error del OS (​ errorHook ). | x |

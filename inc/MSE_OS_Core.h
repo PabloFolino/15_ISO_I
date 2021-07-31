@@ -108,6 +108,7 @@ enum _prioridad  {
 
 typedef enum _prioridad prioridadTarea;
 
+
 /********************************************************************************
  * Definición de la estructura de cada tarea
  *******************************************************************************/
@@ -129,10 +130,10 @@ typedef struct _tarea tarea;
  *******************************************************************************/
 
 enum _estadoOS  {
-	OS_FROM_RESET,				//inicio luego de un reset
-	OS_NORMAL_RUN,				//estado del sistema corriendo una tarea
-	OS_SCHEDULING,				//el OS esta efectuando un scheduling
-	OS_IRQ_RUN					//El OS esta corriendo un Handler
+	OS_FROM_RESET,				// Inicio luego de un reset
+	OS_NORMAL_RUN,				// Estado del sistema corriendo una tarea
+	OS_SCHEDULING,				// El OS esta efectuando un scheduling
+	OS_IRQ_RUN					// El OS esta corriendo un Handler
 
 };
 
@@ -164,7 +165,7 @@ typedef struct _osControl osControl;
 /*==================[definición de prototipos]=================================*/
 void os_Init(void);				// Inicia el Sistema Operativo
 void os_InitTarea(void *entryPoint, tarea *task, uint8_t prioridad);
-
+void tareaDelay(uint32_t );
 
 
 
