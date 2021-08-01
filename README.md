@@ -9,7 +9,7 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
-Avances del último commit 31/07 :
+Avances del último commit 01/08 :
  
 	main.c y main.h
 	1) Se crea en tiempo de compilación las estructuras de las tareas.
@@ -23,6 +23,7 @@ Avances del último commit 31/07 :
 	4) Se crea actuliza la función setPendSV(), y la scheduler().
 	5) Se genera la función de la función delayTarea().
 	6) Para hacer el Round-Robin se crea una función específica.
+	7) Se agrega idleTask.
 
 
 
