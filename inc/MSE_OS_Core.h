@@ -65,6 +65,8 @@
 
 
 #define MAX_TASK_COUNT				10	// Cantidad máxima de tareas para este OS
+										// internamente se le suma una tarea más
+										// la idleTask
 
 #define MAX_PRIORITY				0	// Máxima prioridad que puede tener una tarea
 #define MIN_PRIORITY				3	// Mínima prioridad que puede tener una tarea
@@ -143,7 +145,7 @@ typedef enum _estadoOS estadoOS;
  * Definición de la estructura de control para el Sistema Operativo
  *******************************************************************************/
 struct _osControl  {
-	void *listaTareas[MAX_TASK_COUNT];			//array de punteros a tareas
+	void *listaTareas[MAX_TASK_COUNT+1];		//array de punteros a tareas + idleTask
 //	int32_t error;								//variable que contiene el ultimo error generado
 	uint8_t cantidad_Tareas;					//cantidad de tareas definidas por el usuario
 //	uint8_t cantTareas_prioridad[PRIORITY_COUNT];	//cada posicion contiene cuantas tareas tienen la misma prioridad
@@ -155,6 +157,8 @@ struct _osControl  {
 //
 	tarea *tarea_actual;						//definicion de puntero para tarea actual
 	tarea *tarea_siguiente;						//definicion de puntero para tarea siguiente
+	uint8_t prioridadMin_Tarea;					//Prioridad mínima de las tarea definida por el usuario
+	uint8_t prioridadMax_Tarea;					//Prioridad mínima de las tarea definida por el usuario
 };
 
 typedef struct _osControl osControl;

@@ -58,11 +58,11 @@ Avances del último commit 31/07 :
 [05/07] | 10. El tick del sistema será de 1 [ms].| ✔ |
 [x.0] | 11. El OS debe tener ​ hooks ​ definidos como funciones ​ WEAK​ para la ejecución de código en las siguientes condiciones: |   |
 [31/07] | 11.a. Tick del sistema (​ tickHook ). | ✔ |
-[x.0] | 11.b. Ejecución de código en segundo plano (​ taskIdle ). | x |
+[01/08] | 11.b. Ejecución de código en segundo plano (​ taskIdle ). | ✔ |
 [x.0] | 11.c. Error y retorno de una de las tareas (​ returnHook ​ ).| x |
 [x.0] | 11.d. Error del OS (​ errorHook ). | x |
 [x.0] | 12. El OS debe poseer una API que contenga como mínimo las siguientes funciones:|   |
-[x.0] | 12.a. Función de retardos (delay). | x |
+[01/08] | 12.a. Función de retardos (delay). | ✔ |
 [x.0] | 12.b. Semáforos binarios. | x |
 [x.0] | 12.c. Colas (​ queue ).| x |
 [x.0] | 12.d. Secciones críticas. | x |

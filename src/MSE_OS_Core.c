@@ -9,113 +9,29 @@
 
 //======================= Es provisorio ================================================
 
-
-
 //======================================================================================
 
-/*==================[Deaclaración de funciones locales]================================*/
+/*===================[Declaración de funciones locales]================================*/
+
 static void scheduler(void);
+void setPendSV(void);
+uint32_t getContextoSiguiente(uint32_t sp_actual);
+void SysTick_Handler(void);
+uint8_t busqueda(uint8_t prioridadScan, estadoTarea estadoT);
+void __attribute__((weak)) idleTask(void);
+
+void __attribute__((weak)) returnHook(void);
+void __attribute__((weak)) tickHook(void);
+void __attribute__((weak)) errorHook(void *caller);
+
 
 
 /*==================[Definición de variables globales]=================================*/
 
 static osControl control_OS;
+static tarea tareaIdle;
 
-
-/*==================[definicion de hooks debiles]=================================*/
-
-/*
- * Esta seccion contiene los hooks de sistema, los cuales el usuario del OS puede
- * redefinir dentro de su codigo y poblarlos segun necesidad
- */
-
-
-/*************************************************************************************************
-	 *  @brief Hook de retorno de tareas
-     *
-     *  @details
-     *   Esta funcion no deberia accederse bajo ningun concepto, porque ninguna tarea del OS
-     *   debe retornar. Si lo hace, es un comportamiento anormal y debe ser tratado.
-     *
-	 *  @param none
-	 *
-	 *  @return none.
-***************************************************************************************************/
-void __attribute__((weak)) returnHook(void)  {
-	while(1);
-}
-
-
-
-/*************************************************************************************************
-	 *  @brief Hook de tick de sistema
-     *
-     *  @details
-     *   Se ejecuta cada vez que se produce un tick de sistema. Es llamada desde el handler de
-     *   SysTick.
-     *
-	 *  @param none
-	 *
-	 *  @return none.
-	 *
-	 *  @warning	Esta funcion debe ser lo mas corta posible porque se ejecuta dentro del handler
-     *   			mencionado, por lo que tiene prioridad sobre el cambio de contexto y otras IRQ.
-	 *
-	 *  @warning 	Esta funcion no debe bajo ninguna circunstancia utilizar APIs del OS dado
-	 *  			que podria dar lugar a un nuevo scheduling.
-***************************************************************************************************/
-void __attribute__((weak)) tickHook(void)  {
-	__asm volatile( "nop" );
-}
-
-
-
-/*************************************************************************************************
-	 *  @brief Hook de error de sistema
-     *
-     *  @details
-     *   Esta funcion es llamada en caso de error del sistema, y puede ser utilizada a fin de hacer
-     *   debug. El puntero de la funcion que llama a errorHook es pasado como parametro para tener
-     *   informacion de quien la esta llamando, y dentro de ella puede verse el codigo de error
-     *   en la estructura de control de sistema. Si ha de implementarse por el usuario para manejo
-     *   de errores, es importante tener en cuenta que la estructura de control solo esta disponible
-     *   dentro de este archivo.
-     *
-	 *  @param caller		Puntero a la funcion donde fue llamado errorHook. Implementado solo a
-	 *  					fines de trazabilidad de errores
-	 *
-	 *  @return none.
-***************************************************************************************************/
-void __attribute__((weak)) errorHook(void *caller)  {
-	/*
-	 * Revisar el contenido de control_OS.error para obtener informacion. Utilizar os_getError()
-	 */
-	while(1);
-}
-
-
-
-/*************************************************************************************************
-	 *  @brief Tarea Idle (segundo plano)
-     *
-     *  @details
-     *   Esta tarea se ejecuta solamente cuando todas las demas tareas estan en estado bloqueado.
-     *   Puede ser redefinida por el usuario.
-     *
-	 *  @param none
-	 *
-	 *  @return none.
-	 *
-	 *  @warning		No debe utilizarse ninguna funcion API del OS dentro de esta funcion. No
-	 *  				debe ser causa de un re-scheduling.
-***************************************************************************************************/
-void __attribute__((weak)) idleTask(void)  {
-	while(1)  {
-		__WFI();
-	}
-}
-
-
+/*==================[Funciones del Sistema Operativo]=================================*/
 
 /*************************************************************************************************
 	 *  @brief Inicializa el OS.
@@ -141,15 +57,25 @@ void os_Init(void)  {
 	control_OS.tarea_actual=NULL;
 	control_OS.tarea_siguiente=NULL;
 
-	/* En control_OS.listaTareas[] se tiene los punteros de cada tarea y en
-	 * control_OS.cantidad_Tareas se tiene la cantidad de tareas instanciadas.
-	 * Se conpleta el resto del vector con NULL
+	/*
+	 * Se inicializa una tarea Idle, la cual no es visible al usuario. Esta tarea se agrega a
+	 * control_OS.listaTareas[] como una tarea más, con la prioridad más baja definida por la
+	 * constante PRIORITY_COUNT.
+	 * Como esta tarea debe estar siempre presente y el usuario no la inicializa.
+	 *
 	 */
-	for(uint8_t c=control_OS.cantidad_Tareas;c<MAX_TASK_COUNT;c++){
+	os_InitTarea(idleTask, &tareaIdle,PRIORITY_COUNT);
+
+	/*
+	 * En control_OS.listaTareas[] se tiene los punteros de cada tarea y en
+	 * control_OS.cantidad_Tareas se tiene la cantidad de tareas instanciadas.
+	 * Se conpleta el resto del vector con NULL.
+	 *
+	 */
+	for(uint8_t c=control_OS.cantidad_Tareas+1;c<MAX_TASK_COUNT;c++){
 		control_OS.listaTareas[c]=NULL;
 	}
 }
-
 
 /*************************************************************************************************
 	 *  @brief Inicializa las tareas que correran en el OS.
@@ -175,7 +101,9 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 	 * de tareas
 	 */
 
-	if(control_OS.cantidad_Tareas < MAX_TASK_COUNT-1)  {			// Llegue al máximo de tareas
+	if(control_OS.cantidad_Tareas < MAX_TASK_COUNT+1)  {			// Llegue al máximo de tareas se toma
+																	// en cuenta el lugar para la tarea
+																	// idelTask
 
 		task->stack[STACK_SIZE/4 - XPSR] = INIT_XPSR;				//necesario para bit thumb
 		task->stack[STACK_SIZE/4 - PC_REG] = (uint32_t)entryPoint;	//direccion de la tarea (ENTRY_POINT)
@@ -192,28 +120,44 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 		task->stack_pointer = (uint32_t) (task->stack + STACK_SIZE/4 - FULL_STACKING_SIZE);
 
 		/*
-		 * En esta seccion se guarda el entry point de la tarea, se le asigna id a la misma y se pone
-		 * la misma en estado READY. Todas las tareas se crean en estado READY.
-		 * Se asigna la prioridad de la misma.
+		 * Si es la primera vez se configura prioridadMin_Tarea y prioridadMax_Tarea con un valor inicial
+		 * y luego se actualiza a medida que van ingresando las tareas.
 		 */
-		task->entry_point = entryPoint;
-		task->id = id;
-		task->estado = TAREA_READY;
-		task->prioridad = prioridad;
-		task->ticks_bloqueada=0;
+		if (id==0){
+			control_OS.prioridadMin_Tarea=prioridad;
+			control_OS.prioridadMax_Tarea=prioridad;
+			}
+		else{
+			if(prioridad>control_OS.prioridadMin_Tarea && entryPoint!=idleTask) control_OS.prioridadMin_Tarea=prioridad;
+			if(prioridad<control_OS.prioridadMax_Tarea && entryPoint!=idleTask) control_OS.prioridadMax_Tarea=prioridad;
+		}
 
 		/*
-		 * Actualizacion de la estructura de control del OS, guardando el puntero a la estructura de tarea
-		 * que se acaba de inicializar, y se actualiza la cantidad de tareas definidas en el sistema.
-		 * Luego se incrementa el contador de id, dado que se le otorga un id correlativo a cada tarea
-		 * inicializada, segun el orden en que se inicializan.
-		 */
-
+		* En esta seccion se guarda el entry point de la tarea, se le asigna id a la misma y se pone
+		* la misma en estado READY. Todas las tareas se crean en estado READY.
+		* Se asigna la prioridad de la misma.
+		*/
+		task->entry_point = entryPoint;
+		task->estado = TAREA_READY;
+		task->ticks_bloqueada=0;
 		control_OS.listaTareas[id] = task;		// Se carga los punteros de cada tarea
-		id++;
-		control_OS.cantidad_Tareas=id;     		// Informo al S.O. la cantidad de tareas
-//		control_OS.cantTareas_prioridad[prioridad]++;
 
+		if(entryPoint==idleTask){
+			task->id  = control_OS.cantidad_Tareas;
+			task->prioridad = PRIORITY_COUNT;
+			}
+		else{
+			task->id = id;
+			task->prioridad = prioridad;
+			/*
+			 * Actualizacion de la estructura de control del OS, guardando el puntero a la estructura de tarea
+			 * que se acaba de inicializar, y se actualiza la cantidad de tareas definidas en el sistema.
+			 * Luego se incrementa el contador de id, dado que se le otorga un id correlativo a cada tarea
+			 * inicializada, segun el orden en que se inicializan.
+			 */
+			id++;
+			control_OS.cantidad_Tareas=id;     		// Informo al S.O. la cantidad de tareas
+		}
 	}
 
 	else {
@@ -226,6 +170,7 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 	}
 }
 
+/*================[Funciones internas del Sistema Operativo]==========================*/
 
 /*************************************************************************************************
 	 *  @brief setPendSV Handler.
@@ -257,9 +202,8 @@ void setPendSV(void)  {
 	__DSB();
 }
 
-
 /*************************************************************************************************
-	 *  @brief Funcion para determinar el proximo contexto.
+	 *  @brief getContextoSiguiente Funcion para determinar el próximo contexto.
      *
      *  @details
      *   Esta funcion en este momento hace las veces de scheduler y tambien obtiene el siguiente
@@ -323,7 +267,7 @@ void SysTick_Handler(void)  {
 	 * se debe pasar la tarea a READY.
 	 */
 
-	for(uint8_t id_tarea=0;id_tarea<control_OS.cantidad_Tareas;id_tarea++) {
+	for(uint8_t id_tarea=0;id_tarea<control_OS.cantidad_Tareas+1;id_tarea++) {
 		task_aux =(tarea*)control_OS.listaTareas[id_tarea];
 		if (  task_aux->ticks_bloqueada != 0 ) {
 			task_aux->ticks_bloqueada--;
@@ -352,7 +296,7 @@ void SysTick_Handler(void)  {
 }
 
 /*************************************************************************************************
-	 *  @brief busqueda.
+	 *  @brief busqueda de prioridad y estado de las tareas.
      *
      *  @details
      *  Devuelve cuantas tareas hay en una prioridad, con un determinada estado
@@ -364,7 +308,7 @@ uint8_t busqueda(uint8_t prioridadScan, estadoTarea estadoT) {
 	tarea *task_aux;		//variable auxiliar
 	uint8_t cantidad=0;
 
-	for(uint8_t id_tarea=0;id_tarea<control_OS.cantidad_Tareas;id_tarea++) {
+	for(uint8_t id_tarea=0;id_tarea<control_OS.cantidad_Tareas+1;id_tarea++) {
 		task_aux =(tarea*)control_OS.listaTareas[id_tarea];
 		if(task_aux->prioridad==prioridadScan && task_aux->estado==estadoT){
 			cantidad++;
@@ -387,7 +331,7 @@ uint8_t roundRobin(prioridadTarea scanPrioridad,uint8_t id_tarea) {
 	static prioridadTarea scanPrioridad_old=0;
 	tarea *task_aux;				//variable auxiliar
 
-	if(scanPrioridad!=scanPrioridad_old || id_tarea>=control_OS.cantidad_Tareas){
+	if(scanPrioridad!=scanPrioridad_old || id_tarea>=control_OS.cantidad_Tareas+1){
 		id_tarea=0;
 	}
 	while(true){
@@ -399,7 +343,7 @@ uint8_t roundRobin(prioridadTarea scanPrioridad,uint8_t id_tarea) {
 			}
 		else{
 			id_tarea++;
-			if(id_tarea>=control_OS.cantidad_Tareas) id_tarea=0;
+			if(id_tarea>=control_OS.cantidad_Tareas+1) id_tarea=0;
 		}
 	}
 
@@ -425,7 +369,7 @@ static void scheduler(void)  {
 	prioridadTarea	scanPrioridad=0;
 //	bool flag;
 
-	for(scanPrioridad=0;scanPrioridad<PRIORITY_COUNT;scanPrioridad++){
+	for(scanPrioridad=0;scanPrioridad<=PRIORITY_COUNT;scanPrioridad++){
 		if(busqueda(scanPrioridad, TAREA_READY)){
 			id_tarea=roundRobin(scanPrioridad,id_tarea);
 			break;
@@ -457,4 +401,102 @@ void tareaDelay(uint32_t cuentas) {
 	}
 	//__asm("cpsie i");
 }
+
+
+
+/*************************************************************************************************
+	 *  @brief Tarea Idle (segundo plano)
+     *
+     *  @details
+     *   Esta tarea se ejecuta solamente cuando todas las demas tareas estan en estado bloqueado.
+     *   Puede ser redefinida por el usuario.
+     *
+	 *  @param none
+	 *
+	 *  @return none.
+	 *
+	 *  @warning		No debe utilizarse ninguna funcion API del OS dentro de esta funcion. No
+	 *  				debe ser causa de un re-scheduling.
+***************************************************************************************************/
+void __attribute__((weak)) idleTask(void)  {
+	while(1)  {
+		__WFI();
+	}
+}
+
+/*==================[Definición de hooks débiles]=================================*/
+
+/*
+ * Esta seccion contiene los hooks de sistema, los cuales el usuario del OS puede
+ * redefinir dentro de su codigo y poblarlos segun necesidad
+ */
+
+
+/*************************************************************************************************
+	 *  @brief Hook de retorno de tareas
+     *
+     *  @details
+     *   Esta funcion no deberia accederse bajo ningun concepto, porque ninguna tarea del OS
+     *   debe retornar. Si lo hace, es un comportamiento anormal y debe ser tratado.
+     *
+	 *  @param none
+	 *
+	 *  @return none.
+***************************************************************************************************/
+void __attribute__((weak)) returnHook(void)  {
+	while(1);
+}
+
+
+/*************************************************************************************************
+	 *  @brief Hook de tick de sistema
+     *
+     *  @details
+     *   Se ejecuta cada vez que se produce un tick de sistema. Es llamada desde el handler de
+     *   SysTick.
+     *
+	 *  @param none
+	 *
+	 *  @return none.
+	 *
+	 *  @warning	Esta funcion debe ser lo mas corta posible porque se ejecuta dentro del handler
+     *   			mencionado, por lo que tiene prioridad sobre el cambio de contexto y otras IRQ.
+	 *
+	 *  @warning 	Esta funcion no debe bajo ninguna circunstancia utilizar APIs del OS dado
+	 *  			que podria dar lugar a un nuevo scheduling.
+***************************************************************************************************/
+void __attribute__((weak)) tickHook(void)  {
+	__asm volatile( "nop" );
+}
+
+
+/*************************************************************************************************
+	 *  @brief Hook de error de sistema
+     *
+     *  @details
+     *   Esta funcion es llamada en caso de error del sistema, y puede ser utilizada a fin de hacer
+     *   debug. El puntero de la funcion que llama a errorHook es pasado como parametro para tener
+     *   informacion de quien la esta llamando, y dentro de ella puede verse el codigo de error
+     *   en la estructura de control de sistema. Si ha de implementarse por el usuario para manejo
+     *   de errores, es importante tener en cuenta que la estructura de control solo esta disponible
+     *   dentro de este archivo.
+     *
+	 *  @param caller		Puntero a la funcion donde fue llamado errorHook. Implementado solo a
+	 *  					fines de trazabilidad de errores
+	 *
+	 *  @return none.
+***************************************************************************************************/
+void __attribute__((weak)) errorHook(void *caller)  {
+	/*
+	 * Revisar el contenido de control_OS.error para obtener informacion. Utilizar os_getError()
+	 */
+	while(1);
+}
+
+
+
+
+
+
+
 //
