@@ -166,8 +166,26 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 		 * el ultimo error generado en la estructura de control del OS y se llama a errorHook y se
 		 * envia informacion de quien es quien la invoca.
 		 */
-//		os_setError(ERR_OS_CANT_TAREAS,os_InitTarea);
+		os_setError(ERR_OS_CANT_TAREAS,os_InitTarea);
 	}
+}
+
+
+/*************************************************************************************************
+	 *  @brief Levanta un error de sistema.
+     *
+     *  @details
+     *   En aras de mantener la estructura de control aislada solo en el archivo de core esta
+     *   funcion proporciona una forma de setear el codigo de error y lanza una ejecucion
+     *   de errorHook
+     *
+	 *  @param 		err		El codigo de error que ha surgido
+	 *  @param		caller	Puntero a la funcion que llama a esta funcion
+	 *  @return     none.
+***************************************************************************************************/
+void os_setError(int32_t err, void* caller)  {
+	control_OS.error = err;
+	errorHook(caller);
 }
 
 /*================[Funciones internas del Sistema Operativo]==========================*/
@@ -225,13 +243,7 @@ uint32_t getContextoSiguiente(uint32_t sp_actual)  {
 	 * y se retorna al handler de PendSV
 	 */
 
-
-	// Se guarda el contexto de la tarea actual y paso a TAREA_READY
-	// Se supone que la tarea estaba en TAREA_RUNNING
-	if(control_OS.estado_sistema!=OS_FROM_RESET){
-		control_OS.tarea_actual->stack_pointer = sp_actual;
-	}
-
+	control_OS.tarea_actual->stack_pointer = sp_actual;
 
 	// Se cambia a la tarea siguiente
 	sp_siguiente = control_OS.tarea_siguiente->stack_pointer;
@@ -363,11 +375,37 @@ uint8_t roundRobin(prioridadTarea scanPrioridad,uint8_t id_tarea) {
 	 *  @return     None.
 ***************************************************************************************************/
 static void scheduler(void)  {
-
 	static uint8_t id_tarea=0;
-//	tarea *task_aux;				//variable auxiliar
-	prioridadTarea	scanPrioridad=0;
-//	bool flag;
+	prioridadTarea	scanPrioridad=PRIORIDAD_0;
+
+
+	/*
+	 * Si se viene del reset se pone a la tarea idle como tarea actual
+	 */
+	if (control_OS.estado_sistema == OS_FROM_RESET)  {
+		control_OS.tarea_actual = control_OS.listaTareas[control_OS.cantidad_Tareas];
+		control_OS.estado_sistema = OS_NORMAL_RUN;
+	}
+
+
+	/*
+	 * Puede darse el caso en que se haya invocado la funcion os_CpuYield() la cual hace una
+	 * llamada al scheduler. Si durante la ejecucion del scheduler (la cual fue forzada) y
+	 * esta siendo atendida en modo Thread ocurre una excepcion dada por el SysTick, habra una
+	 * instancia del scheduler pendiente en modo trhead y otra corriendo en modo Handler invocada
+	 * por el SysTick. Para evitar un doble scheduling, se controla que el sistema no este haciendo
+	 * uno ya. En caso afirmativo se vuelve prematuramente
+	 */
+	if (control_OS.estado_sistema == OS_SCHEDULING)  {
+		return;
+	}
+
+	/*
+	 * Cambia el estado del sistema para que no se produzcan schedulings anidados cuando
+	 * existen forzados por alguna API del sistema.
+	 */
+	control_OS.estado_sistema = OS_SCHEDULING;
+
 
 	for(scanPrioridad=0;scanPrioridad<=PRIORITY_COUNT;scanPrioridad++){
 		if(busqueda(scanPrioridad, TAREA_READY)){

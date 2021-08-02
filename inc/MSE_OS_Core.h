@@ -72,16 +72,13 @@
 #define MIN_PRIORITY				3	// Mínima prioridad que puede tener una tarea
 #define PRIORITY_COUNT		(MIN_PRIORITY-MAX_PRIORITY)+1	//cantidad de prioridades asignables
 
+/*==================[Definición codigos de error y warning de OS]=================================*/
+#define ERR_OS_CANT_TAREAS		-1
 
 
-/*==================[definición de datos externa]=================================*/
+/*==================[Definición de datos externa]================================================*/
 
-//extern uint32_t sp_tarea1;					//Stack Pointer para la tarea 1
-//extern uint32_t sp_tarea2;					//Stack Pointer para la tarea 2
-
-
-
-/*===========[Definición de datos para el SiStema Operativo]=======================*/
+/*==================[Definición de datos para el SiStema Operativo]==============================*/
 
 /********************************************************************************
  * Definición de los estados posibles para las tareas
@@ -146,15 +143,14 @@ typedef enum _estadoOS estadoOS;
  *******************************************************************************/
 struct _osControl  {
 	void *listaTareas[MAX_TASK_COUNT+1];		//array de punteros a tareas + idleTask
-//	int32_t error;								//variable que contiene el ultimo error generado
+	int32_t error;								//variable que contiene el ultimo error generado
 	uint8_t cantidad_Tareas;					//cantidad de tareas definidas por el usuario
-//	uint8_t cantTareas_prioridad[PRIORITY_COUNT];	//cada posicion contiene cuantas tareas tienen la misma prioridad
-//
 	estadoOS estado_sistema;					//Informacion sobre el estado del OS
 	bool cambioContextoNecesario;
+
 //	bool schedulingFromIRQ;						//esta bandera se utiliza para la atencion a interrupciones
 //	int16_t contador_critico;					//Contador de secciones criticas solicitadas
-//
+
 	tarea *tarea_actual;						//definicion de puntero para tarea actual
 	tarea *tarea_siguiente;						//definicion de puntero para tarea siguiente
 	uint8_t prioridadMin_Tarea;					//Prioridad mínima de las tarea definida por el usuario
@@ -171,6 +167,7 @@ void os_Init(void);				// Inicia el Sistema Operativo
 void os_InitTarea(void *entryPoint, tarea *task, uint8_t prioridad);
 void tareaDelay(uint32_t );
 
+void os_setError(int32_t err, void* caller);
 
 
 

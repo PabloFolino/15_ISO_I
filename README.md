@@ -20,7 +20,7 @@ Avances del último commit 01/08 :
 	1) Se genera la estructura de control para cada tarea. Se implementa Prioridades y ticks de bloqueo.
 	2) Las tareas pasan de READY, RUNNING y a BLOCKED.
 	2) Se complementa la estructura del kernel del S.O.
-	4) Se crea actuliza la función setPendSV(), y la scheduler().
+	4) Se modifica el scheduler() para que detecte el estdo de RESET del sistema.
 	5) Se genera la función de la función delayTarea().
 	6) Para hacer el Round-Robin se crea una función específica.
 	7) Se agrega idleTask.
@@ -60,8 +60,8 @@ Avances del último commit 01/08 :
 [x.0] | 11. El OS debe tener ​ hooks ​ definidos como funciones ​ WEAK​ para la ejecución de código en las siguientes condiciones: |   |
 [31/07] | 11.a. Tick del sistema (​ tickHook ). | ✔ |
 [01/08] | 11.b. Ejecución de código en segundo plano (​ taskIdle ). | ✔ |
-[x.0] | 11.c. Error y retorno de una de las tareas (​ returnHook ​ ).| x |
-[x.0] | 11.d. Error del OS (​ errorHook ). | x |
+[01/08] | 11.c. Error y retorno de una de las tareas (​ returnHook ​ ).| ✔ |
+[01/08] | 11.d. Error del OS (​ errorHook ). | ✔ |
 [x.0] | 12. El OS debe poseer una API que contenga como mínimo las siguientes funciones:|   |
 [01/08] | 12.a. Función de retardos (delay). | ✔ |
 [x.0] | 12.b. Semáforos binarios. | x |
