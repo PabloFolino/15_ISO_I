@@ -1,3 +1,4 @@
+
 /*
  * MSE_OS_Core.c
  *
@@ -14,10 +15,10 @@
 /*===================[Declaración de funciones locales]================================*/
 
 static void scheduler(void);
-void setPendSV(void);
+static void setPendSV(void);
 uint32_t getContextoSiguiente(uint32_t sp_actual);
 void SysTick_Handler(void);
-uint8_t busqueda(uint8_t prioridadScan, estadoTarea estadoT);
+static uint8_t busqueda(uint8_t prioridadScan, estadoTarea estadoT);
 void __attribute__((weak)) idleTask(void);
 
 void __attribute__((weak)) returnHook(void);
@@ -30,6 +31,7 @@ void __attribute__((weak)) errorHook(void *caller);
 
 static osControl control_OS;
 static tarea tareaIdle;
+static uint64_t systemTicks;
 
 /*==================[Funciones del Sistema Operativo]=================================*/
 
@@ -170,6 +172,51 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 	}
 }
 
+/*************************************************************************************************
+	 *  @brief Función que setea el campo ticks_bloqueada de una tarea
+     *
+     *  @details
+     *   Cuando ticks_bloqueada es distinto de cero la tarea se encuantra en estado BLOCKED,
+     *   esto se lleva a cabo en la función SysTick_Handler().
+     *   En la rutina del SysTick cada vez que se entra decrementa en uno el valor del campo
+     *   ticks_bloqueada.
+     *   Si la cantidad de ticks es dististo de cero, se pone el flag de TAREA_BLOCKED, y se
+     *   fuerza un scheduling, esto se hace para no esperar hasta el próximo SysTick.
+     *   Esta función no se puede llamar dentro de la atención de una interrupción.
+     *
+	 *  @param 		cantidad de ticks.
+	 *  @return     None.
+***************************************************************************************************/
+void tareaDelay(uint32_t cuentas) {
+
+	if(control_OS.estado_sistema!=OS_IRQ_RUN){
+		irqOff();
+		if (cuentas!=0){
+			control_OS.tarea_actual->ticks_bloqueada=cuentas;
+			control_OS.tarea_actual->estado=TAREA_BLOCKED;
+			os_Yield();
+		}
+		irqOn();
+		}
+	else{
+		os_setError(ERR_DELAY_FROM_ISR,tareaDelay);			// Se produce un error
+	}
+}
+
+
+/*************************************************************************************************
+	 *  @brief Función que lee el contador del sistema
+     *
+     *  @details
+     *   Esta variable se incrementa cada 1mseg
+     *
+	 *  @param 		none
+	 *  @return     systemTicks
+***************************************************************************************************/
+uint64_t os_getSytemTicks(void){
+	return systemTicks;
+}
+
 
 /*************************************************************************************************
 	 *  @brief Levanta un error de sistema.
@@ -186,6 +233,208 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 void os_setError(int32_t err, void* caller)  {
 	control_OS.error = err;
 	errorHook(caller);
+}
+
+/*************************************************************************************************
+	 *  @brief Recupera el último error del sistema.
+     *
+     *  @details
+     *  Ya que la estructura no es visible por el usuario, se ofrece esta función para acceder a
+     *  este parámetro.
+     *
+	 *  @param 		None
+	 *  @return     None.
+***************************************************************************************************/
+int32_t os_getError(void){
+	return control_OS.error;
+
+}
+
+/*************************************************************************************************
+	 *  @brief Informa cuantas tareas hay en el sistema.
+     *
+     *  @details
+     *  Ya que la estructura no es visible por el usuario, se ofrece esta función para acceder a
+     *  este parámetro.
+     *
+	 *  @param 		None
+	 *  @return     None.
+***************************************************************************************************/
+int8_t os_getTareas(void){
+	return control_OS.cantidad_Tareas;
+}
+
+/*************************************************************************************************
+	 *  @brief Devuelve el puntero de la tarea en ejecución
+     *
+     *  @details
+     *   El puntero de la terea actual lo recupera de la estructura de control.
+     *
+	 *  @param 		None
+	 *  @return     puntero a la estructura de la tarea actual.
+***************************************************************************************************/
+tarea* os_getTareaActual(void)  {
+	return control_OS.tarea_actual;
+}
+
+
+/*************************************************************************************************
+	 *  @brief Busca la cantidad de tareas que hay en una prioridad determinada.
+     *
+     *  @details
+     *  Ya que la estructura no es visible por el usuario, se ofrece esta función para acceder a este
+     *  parámetro. Recupera la cantidad de tareas que se encuentran en un ESTADO con una PRIORIDAD
+     *  determinada.
+     *  El estado puede ser: READY, RUNNING o BLOCKED. y la tareas : de PRIORIDAD_0(mayor prioridad)
+     *  a PRIORIDAD_3(menor prioridad). Se verifica que el sistema no este ejecutándose OS_SCHEDULING
+     *  ya que usa la función búsqueda().
+     *
+	 *  @param 		PRIORIDAD , ESTADO
+	 *  @return     None.
+***************************************************************************************************/
+int8_t os_getTareasPrioridadEstado(uint8_t prioridadScan, estadoTarea estadoT){
+	uint8_t cantidad;
+	while(true){
+		if (control_OS.estado_sistema != OS_SCHEDULING) {
+				cantidad=busqueda(prioridadScan, estadoT);
+				return cantidad;
+			}
+	}
+}
+
+
+/*************************************************************************************************
+	 *  @brief Recupera el estado del sistema.
+     *
+     *  @details
+     *  Ya que la estructura no es visible por el usuario, se ofrece esta función para acceder a este
+     *  parámetro.
+     *  Los estados pueden ser;
+     *  		OS_FROM_RESET	// Inicio luego de un reset
+     *  		OS_NORMAL_RUN	// Estado del sistema corriendo una tarea
+     *  		OS_SCHEDULING	// El OS esta efectuando un scheduling
+     *  		OS_IRQ_RUN		// El OS esta corriendo un Handler
+     *
+	 *  @param 		None
+	 *  @return     None.
+***************************************************************************************************/
+int8_t os_getEstadoSistema(void){
+	return control_OS.estado_sistema;
+}
+
+
+/*************************************************************************************************
+	 *  @brief Recupera de las prioridades cuál es la máxima.
+     *
+     *  @details
+     *  Ya que la estructura no es visible por el usuario, se ofrece esta función para acceder a este
+     *  parámetro.
+     *
+	 *  @param 		None
+	 *  @return     None.
+***************************************************************************************************/
+int8_t os_getPrioridadMax(void){
+	return control_OS.prioridadMax_Tarea;
+}
+
+/*************************************************************************************************
+	 *  @brief Recupera de las prioridades cuál es la mínima.
+     *
+     *  @details
+     *  Ya que la estructura no es visible por el usuario, se ofrece esta función para acceder a este
+     *  parámetro.
+     *
+	 *  @param 		None
+	 *  @return     None.
+***************************************************************************************************/
+int8_t os_getPrioridadMin(void){
+	return control_OS.prioridadMin_Tarea;
+}
+
+/*************************************************************************************************
+	 *  @brief Cambia la prioridad de una tarea.
+     *
+     *  @details
+     *  Cambia la prioridad de una tarea.
+     *  Si la tarea se encuentra en RUNNIG la PRIORIDAD no se cambia. O sea una tarea
+     *  no puede cambiar su PRIORIDAD.
+     *
+	 *  @param 		area *task, uint8_t prioridad
+	 *  @return     None.
+***************************************************************************************************/
+void os_setTareaPrioridad(tarea *task, uint8_t prioridad){
+	while(true){
+		if(task->estado!=TAREA_RUNNING){
+				task->prioridad = prioridad;
+		return;
+		}
+	}
+}
+
+
+/*************************************************************************************************
+	 *  @brief Cambia la prioridad de una tarea.
+     *
+     *  @details
+     *  Cambia la prioridad de una tarea.
+     *  Si la tarea se encuentra en RUNNIG la PRIORIDAD no se cambia. O sea una tarea
+     *  no puede cambiar su PRIORIDAD.
+     *
+	 *  @param 		area *task, uint8_t prioridad
+	 *  @return     None.
+***************************************************************************************************/
+void os_setTicksTarea (tarea *task, uint32_t ticks_de_bloqueo){
+	task->ticks_bloqueada=ticks_de_bloqueo;
+}
+
+
+
+
+
+/*************************************************************************************************
+	 *  @brief Fuerza una ejecución del scheduler.
+     *
+     *  @details
+     *   En los casos que un delay de una tarea comience a ejecutarse instantes luego de que
+     *   ocurriese un scheduling, se despericia mucho tiempo hasta el próximo tick de sistema,
+     *   por lo que se fuerza un scheduling y un cambio de contexto si es necesario.
+     *
+	 *  @param 		None
+	 *  @return     None.
+***************************************************************************************************/
+void os_Yield(void)  {
+	scheduler();
+}
+
+/*************************************************************************************************
+	 *  @brief Función que se utiliza para deshabilitar las interrupciones
+     *
+     *  @details
+     *   Sirve cuando se desea proteger una parte crítica del código. No olvidarse habilitar.
+     *   No se lleva la cuenta de cuantas veces se llama a esta función. Se supone que se la
+     *   convoca una vez, y luego de una porci{on de c{odigo no muy extensa se llama a la
+     *   funci{on irqOn().
+     *
+	 *  @param 		none.
+	 *  @return     None.
+***************************************************************************************************/
+void irqOff(void) {
+	__asm("cpsid i");
+	//__asm("cpsie i");
+}
+
+/*************************************************************************************************
+	 *  @brief Función que se utiliza para habilitar las interrupciones
+     *
+     *  @details
+     *   Sirve cuando se desea proteger una parte crítica del código.
+     *
+	 *  @param 		none.
+	 *  @return     None.
+***************************************************************************************************/
+void irqOn(void) {
+	 //__asm("cpsid i");
+	__asm("cpsie i");
 }
 
 /*================[Funciones internas del Sistema Operativo]==========================*/
@@ -237,7 +486,9 @@ uint32_t getContextoSiguiente(uint32_t sp_actual)  {
 
 	/*
 	 * Esta funcion efectua el cambio de contexto. Se guarda el MSP (sp_actual) en la variable
-	 * correspondiente de la estructura de la tarea corriendo actualmente.
+	 * correspondiente de la estructura de la tarea corriendo actualmente. El estado de la tarea
+	 * actual fue modificado por el módulo SysTick_Handler(), el cual pasa todas las tereas a
+	 * RUNNING si el contador de ticks de bloqueo se encuentran en cero.
 	 * Se carga en la variable sp_siguiente el stack pointer de la tarea siguiente, que fue
 	 * definida por el scheduler. Se actualiza la misma a estado RUNNING
 	 * y se retorna al handler de PendSV
@@ -273,15 +524,22 @@ uint32_t getContextoSiguiente(uint32_t sp_actual)  {
 void SysTick_Handler(void)  {
 	tarea *task_aux;		//variable auxiliar
 
+
+	// Incrementa el el reloj del sistema
+	systemTicks++;
+
 	/*
-	 * Actualiza ticks_bloqueada de cada tarea y si tienen un valor de ticks de bloqueo mayor
-	 * a cero, se decrementan en una unidad. Si este contador llega a cero, entonces
-	 * se debe pasar la tarea a READY.
+	 * Actualiza ticks_bloqueada de cada tarea y si tienen un valor de ticks  mayor a cero,
+	 * se decrementan en una unidad. Si este contador llega a cero, entonces se debe pasar
+	 * la tarea a READY. Si la tarea se encuentra en RUNNING y se setea un ticks de bloqueo
+	 * mayor que cero, esta parte del código la pasa a estado BLOQUED, pero estrictamente
+	 * deja de correr cuando se produzca el cambio de contexto en la función:
+	 * getContextoSiguiente()
 	 */
 
 	for(uint8_t id_tarea=0;id_tarea<control_OS.cantidad_Tareas+1;id_tarea++) {
 		task_aux =(tarea*)control_OS.listaTareas[id_tarea];
-		if (  task_aux->ticks_bloqueada != 0 ) {
+		if (  task_aux->ticks_bloqueada != TICKS_OFF ) {
 			task_aux->ticks_bloqueada--;
 			task_aux->estado=TAREA_BLOCKED;
 			}
@@ -308,7 +566,7 @@ void SysTick_Handler(void)  {
 }
 
 /*************************************************************************************************
-	 *  @brief busqueda de prioridad y estado de las tareas.
+	 *  @brief Busqueda de prioridad y estado de las tareas.
      *
      *  @details
      *  Devuelve cuantas tareas hay en una prioridad, con un determinada estado
@@ -374,10 +632,9 @@ uint8_t roundRobin(prioridadTarea scanPrioridad,uint8_t id_tarea) {
 	 *  @param 		None.
 	 *  @return     None.
 ***************************************************************************************************/
-static void scheduler(void)  {
+void scheduler(void)  {
 	static uint8_t id_tarea=0;
 	prioridadTarea	scanPrioridad=PRIORIDAD_0;
-
 
 	/*
 	 * Si se viene del reset se pone a la tarea idle como tarea actual
@@ -386,7 +643,6 @@ static void scheduler(void)  {
 		control_OS.tarea_actual = control_OS.listaTareas[control_OS.cantidad_Tareas];
 		control_OS.estado_sistema = OS_NORMAL_RUN;
 	}
-
 
 	/*
 	 * Puede darse el caso en que se haya invocado la funcion os_CpuYield() la cual hace una
@@ -420,26 +676,6 @@ static void scheduler(void)  {
 		setPendSV();
 
 }
-
-/*************************************************************************************************
-	 *  @brief Función que setea el campo ticks_bloqueada de una tarea
-     *
-     *  @details
-     *   Cuando ticks_bloqueada es distinto de cero la tarea se encuantra en estado BLOCKED.
-     *   En la rutina del SysTick cada vez que se entra decrementa en uno el valor del campo
-     *   ticks_bloqueada.
-     *
-	 *  @param 		cantidad de ticks.
-	 *  @return     None.
-***************************************************************************************************/
-void tareaDelay(uint32_t cuentas) {
-	// __asm("cpsid i");
-	if (cuentas!=0){
-		control_OS.tarea_siguiente->ticks_bloqueada=cuentas;
-	}
-	//__asm("cpsie i");
-}
-
 
 
 /*************************************************************************************************

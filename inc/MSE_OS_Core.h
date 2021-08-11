@@ -1,9 +1,3 @@
-/*
- * MSE_OS_Core.h
- *
- *  Created on: 26 mar. 2020
- *      Author: gonza
- */
 
 #ifndef ISO_I_2020_MSE_OS_INC_MSE_OS_CORE_H_
 #define ISO_I_2020_MSE_OS_INC_MSE_OS_CORE_H_
@@ -72,8 +66,11 @@
 #define MIN_PRIORITY				3	// Mínima prioridad que puede tener una tarea
 #define PRIORITY_COUNT		(MIN_PRIORITY-MAX_PRIORITY)+1	//cantidad de prioridades asignables
 
+#define TICKS_ON					0xFFFFFFFF	// Valor máximo de ticks de bloqueo
+#define TICKS_OFF					0x00	    // Valor mínimo de ticks de bloqueo
 /*==================[Definición codigos de error y warning de OS]=================================*/
 #define ERR_OS_CANT_TAREAS		-1
+#define ERR_DELAY_FROM_ISR		-2
 
 
 /*==================[Definición de datos externa]================================================*/
@@ -160,15 +157,41 @@ struct _osControl  {
 typedef struct _osControl osControl;
 
 
-
-
 /*==================[definición de prototipos]=================================*/
 void os_Init(void);				// Inicia el Sistema Operativo
 void os_InitTarea(void *entryPoint, tarea *task, uint8_t prioridad);
 void tareaDelay(uint32_t );
 
+// Recupera el valor de reloj del sistema
+uint64_t os_getSytemTicks(void);
+// Setea una fución de Error.
 void os_setError(int32_t err, void* caller);
+// Setear una prioridad de una tarea ya creada
+void os_setTareaPrioridad(tarea *task, uint8_t prioridad);
+// Setear los ticks de bloqueo de una tarea
+void os_setTicksTarea (tarea *task, uint32_t ticks_de_bloqueo);
 
+// Recupera el último error del sistema.
+int32_t os_getError(void);
+// Recupera la cantidad de tareas totales del sistema.
+int8_t os_getTareas(void);
+// Recupera la tarea Actual
+tarea* os_getTareaActual(void);
+// Recupera la cantidad de tareas que se encuentran en un ESTADO con una
+// PRIORIDAD determinada.
+int8_t os_getTareasPrioridadEstado(uint8_t prioridadScan, estadoTarea estadoT);
+// Recupera el estado del sistema.
+int8_t os_getEstadoSistema(void);
+// Recupera cual es la prioridad máxima del sistema.
+int8_t os_getPrioridadMax(void);
+// Recupera cual es la prioridad mínima del sistema, si tener encuenta a delayTarea.
+int8_t os_getPrioridadMin(void);
+// Fuerza un schedulering
+void os_Yield(void);
+
+// Para trabajar secciones críticas del código
+void irqOn(void);
+void irqOff(void);
 
 
 

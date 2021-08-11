@@ -9,7 +9,22 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
-Avances del último commit 01/08 :
+Avances del último commit 11/08 :
+
+	Se crean los archivos MSE_API.c y MSE_API.h.
+	1) Se crean las funciones para manejar los semáforos binarios:
+			a) os_SemaforoInit(sem); 		--> Inicializa valores
+			b) return=statusSemTake os_SemaforoTake(sem,delayTicks);
+			c) os_SemaforoGive(sem);
+		
+	MSE_OS_CORE.c y MSE_OS_CORE.h
+	1) Se agregan las funciones:
+			a) void os_Yield()	-- > fuerza un sheduling.
+			b) irqOn(), irqOff()-- > manejo de secciones críticas.
+			c) os_getError() 	--> recupera el último error del sistema.
+
+
+Avances del commit 01/08 :
  
 	main.c y main.h
 	1) Se crea en tiempo de compilación las estructuras de las tareas.
@@ -35,7 +50,7 @@ Avances del último commit 01/08 :
 [05/07] | 2. La cantidad de tareas que soportara el OS será ocho. | ✔ |
 [x.0] | 3. El OS debe administrar las IRQ del hardware.  | x |
 [x.0] | 4. El kernel debe poseer una estructura de control la cual contenga como mínimo los siguientes campos(). |   |
-[x.0] | 4.a. Último error ocurrido | x |
+[09/08] | 4.a. Último error ocurrido | ✔ |
 [31/07] | 4.b. Estado de sistema operativo, por ejemplo: Reset, corriendo normal, interrupción,etc. | ✔ |
 [x.0] | 4.c. Bandera que indique la necesidad de ejecutar un scheduling al salir de una IRQ.| x |
 [31/07] | 4.d. Puntero a la tarea en ejecución.| ✔ |
@@ -64,10 +79,10 @@ Avances del último commit 01/08 :
 [01/08] | 11.d. Error del OS (​ errorHook ). | ✔ |
 [x.0] | 12. El OS debe poseer una API que contenga como mínimo las siguientes funciones:|   |
 [01/08] | 12.a. Función de retardos (delay). | ✔ |
-[x.0] | 12.b. Semáforos binarios. | x |
+[11/08] | 12.b. Semáforos binarios. | ✔ |
 [x.0] | 12.c. Colas (​ queue ).| x |
-[x.0] | 12.d. Secciones críticas. | x |
-[x.0] | 12.e. Forzado de Scheduling (​ cpu yield ). | x |
+[11/08] | 12.d. Secciones críticas. | ✔ |
+[11/08] | 12.e. Forzado de Scheduling (​ cpu yield ). | ✔ |
 
 
 El programa posee los siguientes módulos principales:

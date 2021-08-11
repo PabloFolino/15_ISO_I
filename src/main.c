@@ -6,6 +6,7 @@
 
 #include "MSE_OS_Core.h"
 
+#include "MSE_API.h"
 
 /*==================[Macros and definitions]=================================*/
 
@@ -20,6 +21,9 @@
 
 /*==================[Global data declaration]==============================*/
 tarea estadoTarea1,estadoTarea2,estadoTarea3,estadoTarea4;	// Reservo espacio para el estado de cada tarea
+tarea estadoTarea5,estadoTarea6,estadoTarea7,estadoTarea8;
+
+semaforo sem1;			// Creo los semáforos binarios
 
 /*==================[internal functions declaration]=========================*/
 
@@ -49,12 +53,12 @@ static void initHardware(void)  {
 void tarea1(void)  {
 	uint32_t h = 0;
 	uint32_t i = 0;
+
 	while (1) {
 		h++;
 		i++;
 		if(h==VALOR && i==VALOR){
 			Board_LED_Toggle(LEDS_RGB_VERDE);
-			//tareaDelay(2000);				// En milisegundos
 		}
 		if(h==RESET_C && i==RESET_C){
 				h=0;
@@ -66,13 +70,17 @@ void tarea1(void)  {
 void tarea2(void)  {
 	uint32_t j = 0;
 	uint32_t k = 0;
+	uint8_t contador=0;
+
 	while (1) {
 		j++;
 		k++;
 		if(j==VALOR && k==VALOR){
 			Board_LED_Toggle(LEDS_AMARILLO);
-			tareaDelay(2000);				// En milisegundos
-
+			os_SemaforoGive(&sem1);			// Libero el semáforo1
+			tareaDelay(1000);				// En milisegundos
+			contador++;
+			if(contador==4) os_setTareaPrioridad(&estadoTarea1,PRIORIDAD_2);
 		}
 		if(j==RESET_C && k==RESET_C){
 				j=0;
@@ -98,19 +106,48 @@ void tarea3(void)  {
 }
 
 void tarea4(void)  {
+	statusSemTake returnTake=pdFalse;
+
+	while (1) {
+			returnTake=os_SemaforoTake(&sem1,1108);		// Tomo el semáforo1 por 5 segundos
+			if(returnTake==pdTrue)
+				Board_LED_Toggle(LEDS_VERDE);
+	}
+}
+
+void tarea5(void)  {
 	uint32_t r = 0;
 	uint32_t s = 0;
 	while (1) {
 		r++;
 		s++;
-		if(r==VALOR && s==VALOR){
-			Board_LED_Toggle(LEDS_VERDE);
-			tareaDelay(4000);				// En milisegundos
-		}
-		if(r==RESET_C && s==RESET_C){
-				r=0;
-				s=0;
-		}
+	}
+}
+
+void tarea6(void)  {
+	uint32_t r = 0;
+	uint32_t s = 0;
+	while (1) {
+		r++;
+		s++;
+	}
+}
+
+void tarea7(void)  {
+	uint32_t r = 0;
+	uint32_t s = 0;
+	while (1) {
+		r++;
+		s++;
+	}
+}
+
+void tarea8(void)  {
+	uint32_t r = 0;
+	uint32_t s = 0;
+	while (1) {
+		r++;
+		s++;
 	}
 }
 //================================================================
@@ -126,6 +163,14 @@ int main(void)  {
 	os_InitTarea(tarea2, &estadoTarea2,PRIORIDAD_0);
 	os_InitTarea(tarea3, &estadoTarea3,PRIORIDAD_1);
 	os_InitTarea(tarea4, &estadoTarea4,PRIORIDAD_0);
+	os_InitTarea(tarea4, &estadoTarea5,PRIORIDAD_0);
+	os_InitTarea(tarea4, &estadoTarea6,PRIORIDAD_0);
+	os_InitTarea(tarea4, &estadoTarea7,PRIORIDAD_0);
+	os_InitTarea(tarea4, &estadoTarea8,PRIORIDAD_0);
+
+	//Inicializo los semáforos
+	os_SemaforoInit(&sem1);
+
 
 	os_Init();					// Ejecuta el Sistema Operativo
 
