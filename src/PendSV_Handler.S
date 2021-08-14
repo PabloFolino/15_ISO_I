@@ -1,11 +1,18 @@
-	/*
-		.syntax unified
+/*====================================================================================
+ * Author: Pablo Daniel Folino  <pfolino@gmail.com>
+ * Date: 2021/08/14
+ * Archivo: PendSV_Handler.a
+ * Version: 1
+ *===================================================================================*/
+/*Descripción:
+ * En este módulo es un componente principal del Sisteam Operativo, está escrito en
+ * assembler usando instrucciones para ARM en THUMB.
+ * A éste módolo se lo llama desde el núcleo deeo S.O. (SysTick_Handler --> scheduler
+ * --> setPendSV) y llama a la función getContextoSiguiente para realizar el cambio
+ *  de conterxto.
+ *
+ *===================================================================================*/
 
-		Two slightly different syntaxes are support for ARM and THUMB instructions.
-		The default, divided, uses the old style where ARM and THUMB instructions had their own,
-		separate syntaxes. The new, unified syntax, which can be selected via the
-		.syntax directive
-	*/
 
 	.syntax unified
 	.global PendSV_Handler

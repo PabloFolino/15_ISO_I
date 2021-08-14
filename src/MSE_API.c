@@ -1,3 +1,35 @@
+/*====================================================================================
+ * Author: Pablo Daniel Folino  <pfolino@gmail.com>
+ * Date: 2021/08/14
+ * Archivo: MSE_API.c
+ * Version: 1
+ *===================================================================================*/
+/*Descripción:
+ * En este módulo se encuentran las funciones de manejo de semáforos binarios y de
+ * colas.
+ *
+ * Semáforos: son semáforos binarios, se los debe declarar la estructura del semáforo
+ * en el main.c, usanto el tipo de datos "semaforo". Se los debe inicializar usando la
+ * función os_SemaforoInit(), y se los toma y libera usando las funciones os_SemaforoTake()
+ * y os_SemaforoGive(). Coando se inicializa el semáforo se encuentra TOMADO.
+ * La función os_SemaforoTake() posee un parámetro de delayTicks)que especifica la
+ * cantidad de ticks del sistema que espera para poder tomar el mismo. Esta funciún
+ * devuelve pdFalse si no lo pudo tomar, o pdTrue en caso contrario.
+ *
+ * Colas : se las debe declarar en el main.c con el tipo de dato "cola". Es una cola
+ * tipo FIFO de una longitud especificada por la constante LONG_COLA, definida en el
+ * MSE_API.h. Siempre se extrae el primer elemento  de la cola(usando la función
+ * os_ColaPop) es el que se encuentra en la posición cero. Si la cola se encuentra vacía
+ * se bloquea la tarea hasta que aparezca un elemnto. Al extraer un elemento de la cola
+ * se produce un shft de los datos de la misma  hacia el inicio de la cola y actualiza
+ * la cantidad de elementos que posee.
+ * Cada vez que se agrega un  elemento(usando la función os_ColaPush)se lo coloca en la
+ * última posición, si la cola se encuentra se bloquea la tarea, hasta que se pueda
+ *  agregar un nuevo dato.
+ *  Esta cola está diseñada para que solamente una tarea ingrese datos en la misma,
+ *  y otra única tarea comsuma datos.
+ *
+ *===================================================================================*/
 
 #include "MSE_API.h"
 
@@ -24,7 +56,8 @@ void os_SemaforoInit(semaforo* sem){
      *  @details
      *  Cuando la tarea toma el semáforo, se pasa a estado TAREA_BLOCKED. Si el semáforo ya estaba
      *  bloqueado, sigue estando en estado bloqueado y se reescribe el delayTicks.
-     *  Devuelve pdTrue si se pudo tomar correctamente, o pdFalse si durante delayTicks nadie lo liberó.
+     *  Devuelve pdTrue si se pudo tomar correctamente, o pdFalse si durante delayTicks nadie lo
+     *  liberó.
      *
 	 *  @param 		semaforo* sem,uint32_t delayTicks.
 	 *  @return     bool.

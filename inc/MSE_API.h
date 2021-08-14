@@ -1,3 +1,15 @@
+/*=============================================================================
+ * Author: Pablo Daniel Folino  <pfolino@gmail.com>
+ * Date: 2021/08/14
+ * Archivo: MSE_API.h
+ * Version: 1
+ *===========================================================================*/
+/*Descripción:
+ *
+ *
+ *===========================================================================*/
+
+
 #ifndef MSE_API_H_
 #define MSE_API_H_
 
@@ -51,10 +63,7 @@ typedef struct _cola cola;
 
 
 /*=============[Definición de prototipos para las Tareas]=======================*/
-/*
- * Los semáforos no necesitan de una función de creación ya que se crean en tiemp de
- * complilación.
- */
+
 void os_SemaforoInit(semaforo* sem); 		// Inicializa valores
 statusSemTake os_SemaforoTake(semaforo* sem,uint64_t delayTicks);
 void os_SemaforoGive(semaforo* sem);

@@ -144,14 +144,12 @@ struct _osControl  {
 	uint8_t cantidad_Tareas;					//cantidad de tareas definidas por el usuario
 	estadoOS estado_sistema;					//Informacion sobre el estado del OS
 	bool cambioContextoNecesario;
-
-//	bool schedulingFromIRQ;						//esta bandera se utiliza para la atencion a interrupciones
-//	int16_t contador_critico;					//Contador de secciones criticas solicitadas
-
 	tarea *tarea_actual;						//definicion de puntero para tarea actual
 	tarea *tarea_siguiente;						//definicion de puntero para tarea siguiente
 	uint8_t prioridadMin_Tarea;					//Prioridad mínima de las tarea definida por el usuario
 	uint8_t prioridadMax_Tarea;					//Prioridad mínima de las tarea definida por el usuario
+
+	bool banderaISR;						   //esta bandera se utiliza para la atencion a interrupciones
 };
 
 typedef struct _osControl osControl;
@@ -172,6 +170,10 @@ void os_setTareaPrioridad(tarea *task, uint8_t prioridad);
 void os_setTicksTarea (tarea *task, uint32_t ticks_de_bloqueo);
 // Setear los ticks de bloqueo de una tarea
 void os_setTareaEstado(tarea *task, estadoTarea estado);
+// Configuro  el estado del sistema.
+void os_setEstadoSistema(estadoOS estado);
+
+void os_setFlagISR(bool bandera);
 
 // Recupera el último error del sistema.
 int32_t os_getError(void);
@@ -188,6 +190,10 @@ int8_t os_getEstadoSistema(void);
 int8_t os_getPrioridadMax(void);
 // Recupera cual es la prioridad mínima del sistema, si tener encuenta a delayTarea.
 int8_t os_getPrioridadMin(void);
+
+
+bool os_getFlagISR(void);
+
 // Fuerza un schedulering
 void os_Yield(void);
 

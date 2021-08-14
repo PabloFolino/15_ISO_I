@@ -1,3 +1,18 @@
+
+/*=============================================================================
+ * Author: Pablo Daniel Folino  <pfolino@gmail.com>
+ * Date: 2021/08/14
+ * Archivo: main.c
+ * Version: 1
+ *===========================================================================*/
+/*Descripción:
+ * Ese módulo  es un ejemplo del programa principal para el sistema operativo.
+ * Este programa se probó en la EDU-CIAA-NXP.
+ * Es un S.O. estático, que en tiempo de compilación se especifican la cantidad
+ * de tareas a utilizar, la cantidad de dsemáforos , y la cantidad de colas.
+ *
+ *===========================================================================*/
+
 /*==================[inclusions]=============================================*/
 
 #include "main.h"
@@ -136,9 +151,7 @@ void tarea5(void)  {
 void tarea6(void)  {
 	uint32_t r = 0;
 	uint32_t s = 0;
-	char data="6";
 	while (1) {
-//		os_ColaPush(&buffer1,&data);
 		r++;
 		s++;
 	}

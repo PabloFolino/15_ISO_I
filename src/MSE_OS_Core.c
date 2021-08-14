@@ -1,10 +1,16 @@
-
-/*
- * MSE_OS_Core.c
+/*====================================================================================
+ * Author: Pablo Daniel Folino  <pfolino@gmail.com>
+ * Date: 2021/08/14
+ * Archivo: MSE_OS_Core.c
+ * Version: 1
+ *===================================================================================*/
+/*Descripción:
+ * En este módulo se encuentran las funciones principales del Sistema Operativo.
+ * Se parte del commit Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git
+ * "Implementada getContextoSiguiente y PendSV_Handler"
  *
- *  Created on: 26 mar. 2020
- *      Author: gonza
- */
+ *
+ *===================================================================================*/
 
 #include "MSE_OS_Core.h"
 
@@ -58,6 +64,7 @@ void os_Init(void)  {
 	control_OS.estado_sistema=OS_FROM_RESET;
 	control_OS.tarea_actual=NULL;
 	control_OS.tarea_siguiente=NULL;
+	control_OS.banderaISR=false;
 
 	/*
 	 * Se inicializa una tarea Idle, la cual no es visible al usuario. Esta tarea se agrega a
@@ -373,12 +380,10 @@ void os_setTareaPrioridad(tarea *task, uint8_t prioridad){
 
 
 /*************************************************************************************************
-	 *  @brief Cambia la prioridad de una tarea.
+	 *  @brief Setea los ticks de bloqueo.
      *
      *  @details
-     *  Cambia la prioridad de una tarea.
-     *  Si la tarea se encuentra en RUNNIG la PRIORIDAD no se cambia. O sea una tarea
-     *  no puede cambiar su PRIORIDAD.
+     *  Si una tarea tiene ticks_de_bloqueo distinto de cero, la tarea permanecerá BLOQUEADA.
      *
 	 *  @param 		area *task, uint8_t prioridad
 	 *  @return     None.
@@ -387,6 +392,22 @@ void os_setTicksTarea (tarea *task, uint32_t ticks_de_bloqueo){
 	task->ticks_bloqueada=ticks_de_bloqueo;
 }
 
+/*************************************************************************************************
+	 *  @brief Cambia el estado de sistema .
+	 *
+     *  @details
+     *   Recibe como argumento el estado del sistema que es del tipo "estadoOS"
+     *   			OS_FROM_RESET,				// Inicio luego de un reset
+     *   			OS_NORMAL_RUN,				// Estado del sistema corriendo una tarea
+     *   			OS_SCHEDULING,				// El OS esta efectuando un scheduling
+     *   			OS_IRQ_RUN
+     *
+	 *  @param 		None
+	 *  @return     estadoOS.
+***************************************************************************************************/
+void os_setEstadoSistema(estadoOS estado)  {
+	control_OS.estado_sistema = estado;
+}
 
 /*************************************************************************************************
 	 *  @brief Cambia el estado de una tarea.
@@ -407,12 +428,6 @@ void os_setTareaEstado(tarea *task, estadoTarea estado){
 		task->estado = TAREA_READY;
 	}
 }
-
-
-
-
-
-
 
 
 /*************************************************************************************************
@@ -792,8 +807,32 @@ void __attribute__((weak)) errorHook(void *caller)  {
 }
 
 
+/*************************************************************************************************
+	 *  @brief Setea la bandera de scheduling desde ISR.
+     *
+     *  @details
+     *  El valor de la bandera puede ser true o false.
+     *
+	 *  @param 		value
+	 *  @return     none.
+***************************************************************************************************/
+void os_setFlagISR(bool value)  {
+	control_OS.banderaISR = value;
+}
 
 
+/*************************************************************************************************
+	 *  @brief Devuelve una copia del valor de la bandera sistema.
+     *
+     *  @details
+     *  Si es true significa que viene de una interrupción.
+     *
+	 *  @param 		None
+	 *  @return     Valor de la bandera correspondiente.
+***************************************************************************************************/
+bool os_getFlagISR(void)  {
+	return control_OS.banderaISR;
+}
 
 
 
