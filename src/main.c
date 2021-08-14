@@ -25,6 +25,11 @@ tarea estadoTarea5,estadoTarea6,estadoTarea7,estadoTarea8;
 
 semaforo sem1;			// Creo los semáforos binarios
 
+cola buffer1;			// Creo una cola
+
+//char buffer_test[]={"Hola es una prueba"};
+char buffer_test[]={"123456789abcdefghijklmnopqrstuvwxyz"};
+
 /*==================[internal functions declaration]=========================*/
 
 /*==================[internal data definition]===============================*/
@@ -58,7 +63,7 @@ void tarea1(void)  {
 		h++;
 		i++;
 		if(h==VALOR && i==VALOR){
-			Board_LED_Toggle(LEDS_RGB_VERDE);
+//			Board_LED_Toggle(LEDS_RGB_VERDE);
 		}
 		if(h==RESET_C && i==RESET_C){
 				h=0;
@@ -80,7 +85,7 @@ void tarea2(void)  {
 			os_SemaforoGive(&sem1);			// Libero el semáforo1
 			tareaDelay(1000);				// En milisegundos
 			contador++;
-			if(contador==4) os_setTareaPrioridad(&estadoTarea1,PRIORIDAD_2);
+			//if(contador==4) os_setTareaPrioridad(&estadoTarea1,PRIORIDAD_2);
 		}
 		if(j==RESET_C && k==RESET_C){
 				j=0;
@@ -109,36 +114,51 @@ void tarea4(void)  {
 	statusSemTake returnTake=pdFalse;
 
 	while (1) {
-			returnTake=os_SemaforoTake(&sem1,1108);		// Tomo el semáforo1 por 5 segundos
+			returnTake=os_SemaforoTake(&sem1,2000);		// Tomo el semáforo1 por 5 segundos
 			if(returnTake==pdTrue)
 				Board_LED_Toggle(LEDS_VERDE);
 	}
 }
 
 void tarea5(void)  {
-	uint32_t r = 0;
-	uint32_t s = 0;
+	uint16_t i=0;;
 	while (1) {
-		r++;
-		s++;
+		os_ColaPush(&buffer1,&buffer_test[i]);
+		if(i>=sizeof(buffer_test)-1){
+			i=0;
+			}
+		else{
+			i++;
+		}
 	}
 }
 
 void tarea6(void)  {
 	uint32_t r = 0;
 	uint32_t s = 0;
+	char data="6";
 	while (1) {
+//		os_ColaPush(&buffer1,&data);
 		r++;
 		s++;
 	}
 }
 
 void tarea7(void)  {
-	uint32_t r = 0;
-	uint32_t s = 0;
+	uint32_t i = 0;
+	char data;
+
 	while (1) {
-		r++;
-		s++;
+		os_ColaPop(&buffer1,&data);
+		tareaDelay(100);
+		if(data==buffer_test[i])
+			Board_LED_Toggle(LEDS_RGB_VERDE);
+		if(i>=sizeof(buffer_test)-1){
+			i=0;
+			}
+		else{
+			i++;
+		}
 	}
 }
 
@@ -159,18 +179,19 @@ int main(void)  {
 	initHardware();
 
 
-	os_InitTarea(tarea1, &estadoTarea1,PRIORIDAD_1);
+	os_InitTarea(tarea1, &estadoTarea1,PRIORIDAD_0);
 	os_InitTarea(tarea2, &estadoTarea2,PRIORIDAD_0);
-	os_InitTarea(tarea3, &estadoTarea3,PRIORIDAD_1);
+	os_InitTarea(tarea3, &estadoTarea3,PRIORIDAD_0);
 	os_InitTarea(tarea4, &estadoTarea4,PRIORIDAD_0);
-	os_InitTarea(tarea4, &estadoTarea5,PRIORIDAD_0);
-	os_InitTarea(tarea4, &estadoTarea6,PRIORIDAD_0);
-	os_InitTarea(tarea4, &estadoTarea7,PRIORIDAD_0);
-	os_InitTarea(tarea4, &estadoTarea8,PRIORIDAD_0);
+	os_InitTarea(tarea5, &estadoTarea5,PRIORIDAD_0);
+	os_InitTarea(tarea6, &estadoTarea6,PRIORIDAD_0);
+	os_InitTarea(tarea7, &estadoTarea7,PRIORIDAD_0);
+	os_InitTarea(tarea8, &estadoTarea8,PRIORIDAD_0);
 
 	//Inicializo los semáforos
 	os_SemaforoInit(&sem1);
 
+	os_ColaInit(&buffer1, sizeof(char));
 
 	os_Init();					// Ejecuta el Sistema Operativo
 

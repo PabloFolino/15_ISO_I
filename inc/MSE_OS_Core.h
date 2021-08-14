@@ -170,6 +170,8 @@ void os_setError(int32_t err, void* caller);
 void os_setTareaPrioridad(tarea *task, uint8_t prioridad);
 // Setear los ticks de bloqueo de una tarea
 void os_setTicksTarea (tarea *task, uint32_t ticks_de_bloqueo);
+// Setear los ticks de bloqueo de una tarea
+void os_setTareaEstado(tarea *task, estadoTarea estado);
 
 // Recupera el último error del sistema.
 int32_t os_getError(void);

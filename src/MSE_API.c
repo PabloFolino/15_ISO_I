@@ -62,7 +62,7 @@ statusSemTake os_SemaforoTake (semaforo* sem,uint64_t delayTicks) {
      *  @details
      *   Esta función se utiliza para liberar un semáforo.
      *
-	 *  @param		sem		Semaáforo a liberar
+	 *  @param		sem		Semáforo a liberar
 	 *  @return     None.
  *******************************************************************************/
 void os_SemaforoGive(semaforo* sem)  {
@@ -76,3 +76,123 @@ void os_SemaforoGive(semaforo* sem)  {
 		sem->estadoSemaforo = LIBERADO;
 	}
 }
+
+
+
+
+
+/********************************************************************************
+	 *  @brief Inicializa una cola
+     *
+     *  @details
+     *   Esta función se utiliza para inicializar una cola.
+     *
+	 *  @param		cola* buffer, uint8_t longDato
+	 *  @return     None.
+ *******************************************************************************/
+void os_ColaInit(cola* buffer, uint16_t longDato){
+	buffer->tareaIn=NULL;
+	buffer->tareaOut=NULL;
+	buffer->longElemento=longDato;
+	buffer->contadorElementos=0;
+	buffer->cantElementosMax=(uint16_t)(LONG_COLA/longDato);
+	for(int i=0;i<LONG_COLA;i++)buffer->dato[i]=0;    // no tendía que ser necesario
+}
+
+
+
+/********************************************************************************
+	 *  @brief Escribe un dato en la cola
+     *
+     *  @details
+     *   Esta función se utiliza poner elementos en la cola. Si la cola está
+     *   llena, bloquea la tareaIn con la función  os_setTareaEstado. Si se
+     *   bloquea la tareaIn se llama al scheduler.
+     *
+	 *  @param		cola* buffer, dato
+	 *  @return     None.
+ *******************************************************************************/
+void os_ColaPush(cola* buffer,void* dato){
+	tarea *tareaAux;
+
+	while(1){
+		if(buffer->contadorElementos<buffer->cantElementosMax){
+			// Como hay lugar
+			memcpy(buffer->dato+buffer->contadorElementos,dato,buffer->longElemento);
+			buffer->contadorElementos++;
+			// Debo desploquear la tareaOut ya que se puso un elemento
+			if(buffer->tareaOut!=NULL){
+				void irqOff(void);
+				tareaAux=buffer->tareaOut;
+				os_setTareaEstado(tareaAux, TAREA_READY);
+				buffer->tareaOut=NULL;
+				void irqOn(void);
+				}
+			break;
+			}
+		else{
+			// Si la cola está llena se debe bloquear la tarea, hasta que tenga lugar
+			// El desbloquelo(TAREA_READY) lo hace os_ColaPop()
+			void irqOff(void);
+			tareaAux = os_getTareaActual();
+			buffer->tareaIn=tareaAux;
+			os_setTareaEstado(tareaAux, TAREA_BLOCKED);
+			void irqOn(void);
+			// Llama al scheduler
+			os_Yield();
+
+		}
+	}
+}
+
+
+/********************************************************************************
+	 *  @brief Inicializa una cola
+     *
+     *  @details
+     *   Esta función se utiliza sacar elementos en la cola. Si la cola está
+     *   vacía, bloquea la tareaOut con la función  os_setTareaEstado. Si se
+     *   bloquea la tareaOut se llama al scheduler.
+     *
+	 *  @param		cola* buffer, uint8_t longDato
+	 *  @return     None.
+ *******************************************************************************/
+void os_ColaPop(cola* buffer, void *dato){
+	tarea *tareaAux;
+
+	while(1){
+		if(buffer->contadorElementos!=0){
+			// Si la cola no esta vacía se saca un elemento
+			memcpy(dato,buffer->dato,buffer->longElemento);
+
+			// Corrimiento del buffer!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			for(uint16_t i=0;i<buffer->contadorElementos;i=i+buffer->longElemento){
+				for(uint16_t c=0;c<buffer->longElemento;c++){
+					buffer->dato[i+c]=buffer->dato[i+c+buffer->longElemento];
+					}
+				}
+			buffer->contadorElementos--;
+			// Debo desploquear la tareaIn ya que se sacó un elemento
+			if(buffer->tareaIn!=NULL){
+				void irqOff(void);
+				tareaAux=buffer->tareaIn;
+				os_setTareaEstado(tareaAux, TAREA_READY);
+				buffer->tareaIn=NULL;
+				void irqOn(void);
+				}
+			break;
+			}
+		else{
+			// Si la cola no tiene datos debo bloquear la tarea
+			void irqOff(void);
+			tareaAux = os_getTareaActual();
+			buffer->tareaOut = tareaAux;
+			os_setTareaEstado(tareaAux, TAREA_BLOCKED);
+			void irqOn(void);
+			// Llama al scheduler
+			os_Yield();
+		}
+	}
+}
+
+

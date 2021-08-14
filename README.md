@@ -9,7 +9,19 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
-Avances del último commit 11/08 :
+Avances del último commit 13/08 :
+	
+	MSE_API.c y MSE_API.h.
+	1) Se crean las funciones para manejar las colas:
+			a) os_ColaInit(cola* buffer, uint16_t longDato);--> Inicializa valores
+			b) os_ColaPush(cola* buffer,void* dato); 		--> Ingresa un dato
+			c) os_ColaPop(cola* buffer,void* dato);			--> Saca un dato
+	
+	MSE_OS_CORE.c y MSE_OS_CORE.h
+	1) Se agrega la función  
+		void os_setTareaEstado(tarea *task, estadoTarea estado)
+
+Avances delcommit 11/08 :
 
 	Se crean los archivos MSE_API.c y MSE_API.h.
 	1) Se crean las funciones para manejar los semáforos binarios:
@@ -20,7 +32,7 @@ Avances del último commit 11/08 :
 	MSE_OS_CORE.c y MSE_OS_CORE.h
 	1) Se agregan las funciones:
 			a) void os_Yield()	-- > fuerza un sheduling.
-			b) irqOn(), irqOff()-- > manejo de secciones críticas.
+			b) irqOn(), irqOff()	-- > manejo de secciones críticas.
 			c) os_getError() 	--> recupera el último error del sistema.
 
 
@@ -80,7 +92,7 @@ Avances del commit 01/08 :
 [x.0] | 12. El OS debe poseer una API que contenga como mínimo las siguientes funciones:|   |
 [01/08] | 12.a. Función de retardos (delay). | ✔ |
 [11/08] | 12.b. Semáforos binarios. | ✔ |
-[x.0] | 12.c. Colas (​ queue ).| x |
+[13/08] | 12.c. Colas (​ queue ).| ✔ |
 [11/08] | 12.d. Secciones críticas. | ✔ |
 [11/08] | 12.e. Forzado de Scheduling (​ cpu yield ). | ✔ |
 

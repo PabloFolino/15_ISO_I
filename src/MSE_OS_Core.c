@@ -388,6 +388,30 @@ void os_setTicksTarea (tarea *task, uint32_t ticks_de_bloqueo){
 }
 
 
+/*************************************************************************************************
+	 *  @brief Cambia el estado de una tarea.
+     *
+     *  @details
+     *  Cambia el estado de una tarea, y el ticks de bloqueo.
+     *
+	 *  @param 		tarea *task, estadoTarea estado
+	 *  @return     None.
+***************************************************************************************************/
+void os_setTareaEstado(tarea *task, estadoTarea estado){
+	if(estado==TAREA_BLOCKED){
+		task->ticks_bloqueada=TICKS_ON;
+		task->estado = TAREA_BLOCKED;
+		}
+	if(estado==TAREA_READY){
+		task->ticks_bloqueada=TICKS_OFF;
+		task->estado = TAREA_READY;
+	}
+}
+
+
+
+
+
 
 
 
