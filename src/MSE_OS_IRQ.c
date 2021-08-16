@@ -111,7 +111,7 @@ static void os_IRQHandler(LPC43XX_IRQn_Type IRQn)  {
 	NVIC_ClearPendingIRQ(IRQn);
 
 
-	// Si hubo alguna llamada desde una interrupciön a una API liberando un evento, entonces
+	// Si hubo alguna llamada desde una interrupción a una API liberando un evento, entonces
 	// llamamos al scheduler
 	if (os_getFlagISR())  {
 		os_setFlagISR(false);
