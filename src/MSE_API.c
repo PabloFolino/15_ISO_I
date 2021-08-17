@@ -58,16 +58,19 @@ void os_SemaforoInit(semaforo* sem){
      *  bloqueado, sigue estando en estado bloqueado y se reescribe el delayTicks.
      *  Devuelve pdTrue si se pudo tomar correctamente, o pdFalse si durante delayTicks nadie lo
      *  liberó.
+     *  El máximo de delayTicks es 65535
      *
 	 *  @param 		semaforo* sem,uint32_t delayTicks.
 	 *  @return     bool.
 ***************************************************************************************************/
 statusSemTake os_SemaforoTake (semaforo* sem,uint64_t delayTicks) {
-	uint64_t ticks_finales;
+	static uint64_t ticks_finales;
 	tarea * tareaActual;
 
 	// Leo el valor del contador de ticks
-	ticks_finales= os_getSytemTicks()+delayTicks;
+	ticks_finales=portMax_DELAY;
+	if(delayTicks!=portMax_DELAY)
+		ticks_finales= os_getSytemTicks()+delayTicks;
 
 	// Actualiza estado
 	irqOff();
@@ -84,7 +87,8 @@ statusSemTake os_SemaforoTake (semaforo* sem,uint64_t delayTicks) {
 	while(os_getSytemTicks()<ticks_finales){
 		tareaActual->ticks_bloqueada=TICKS_ON; 	// Se hace para que SysTick_Handler no lo ponga en TAREA_READY
 		if(sem->estadoSemaforo==LIBERADO)
-			return pdTrue;
+			sem->estadoSemaforo=TOMADO;
+		return pdTrue;
 		}
 	return pdFalse;									// no fue liberado durante los delayTicks
 }
@@ -104,9 +108,11 @@ void os_SemaforoGive(semaforo* sem)  {
 	tareaLiberar=sem->tareaSemaforo;
 
 	if (sem->estadoSemaforo == TOMADO && tareaLiberar!= NULL)  {
+		irqOff();
 		tareaLiberar->ticks_bloqueada=TICKS_OFF;
 		tareaLiberar->estado=TAREA_READY;
 		sem->estadoSemaforo = LIBERADO;
+		irqOn();
 	}
 }
 

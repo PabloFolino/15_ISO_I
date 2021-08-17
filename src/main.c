@@ -1,7 +1,7 @@
 
 /*=============================================================================
  * Author: Pablo Daniel Folino  <pfolino@gmail.com>
- * Date: 2021/08/14
+ * Date: 2021/08/17
  * Archivo: main.c
  * Version: 1
  *===========================================================================*/
@@ -10,6 +10,23 @@
  * Este programa se probó en la EDU-CIAA-NXP.
  * Es un S.O. estático, que en tiempo de compilación se especifican la cantidad
  * de tareas a utilizar, la cantidad de dsemáforos , y la cantidad de colas.
+ *
+ * Examen:
+ * 	El programa mide el tiempo que pasa entre los flancos de dos teclas
+ * TEC1 y TEC2.
+ * Si las teclas se presionan en forma que se solapen informa por puerto
+ * serie el tiempo trenscurrido entre los flancos y hace una secuencia de
+ * leds, dependiendo que tecla se presionó primiro y qué tecla se solto
+ * primero.
+ * Si se presiona en forma no intercalada veces la misma tecla y la otra no,
+ * informa por puerto serie ese ERROR.
+ * Se implementó una rurina antirebote mixta(de complicado nomás), el primer
+ * cambio se detecta por interrupciones y el segundo se verifica por encuesta.
+ *
+ * Nota: la tareaLed se la pone con PRIORIDAD_1 para demostar que funcionan
+ * el scheduler. También se puede verificar que cuando todas las tareas de
+ * encuentran BLOQUEADAS entra en funcionamiento la tareaIDLE.
+ *
  *
  *===========================================================================*/
 
@@ -25,6 +42,8 @@
 
 #include "sapi.h"
 
+#include "string.h"
+
 /*==================[Macros and definitions]=================================*/
 
 #define MILISEC		1000		// Con 1000 el systick=1ms
@@ -38,10 +57,7 @@
 #define LEDS_ROJO       0x04
 #define LEDS_VERDE		0x05
 
-
-
-#define BAUDRATE	115200
-
+#define BAUDRATE	460800
 
 #define TEC1_PORT_NUM   0
 #define TEC1_BIT_VAL    4
@@ -49,33 +65,65 @@
 #define TEC2_PORT_NUM   0
 #define TEC2_BIT_VAL    8
 
-
-/*==================[Global data declaration]==============================*/
-tarea estadoTarea1,estadoTarea2,estadoTarea3,estadoTarea4;	// Reservo espacio para el estado de cada tarea
-tarea estadoTarea5,estadoTarea6,estadoTarea7;
-tarea estadoUART;
-tarea g_sEncenderLed, g_sApagarLed;
-
-semaforo sem1;			// Creo los semáforos binarios
-semaforo semTecla1_descendente, semTecla1_ascendente;
-
-cola buffer1;			// Creo una cola
-cola colaUart;
-
-/*=================[Variables para testear el SO]============================*/
-//char buffer_test[]={"Hola es una prueba"};
-char buffer_test[]={"123456789abcdefghijklmnopqrstuvwxyz"};
-//char msgLedVerde[]={"Led verde encendido:"+'\n'+'\r'};
-//char msgLedRojo[]={"Led rojo encendido:"+'\n'+'\r'};
-//char msgLedAzul[]={"Led azul encendido:"+'\n'+'\r'};
-//char msgLedAmarillo[]={"Led amarillo encendido:"+'\n'+'\r'};
-//char msgAsc[]={"\t"+"Tiempos entre flancos ascendentes: "};
-//char msgDesc[]={"\t"+"Tiempos entre flancos descendentes: "};
-//char msgMseg[]={" ms"+'\n'+'\r'};
-
-/*==================[internal functions declaration]=========================*/
+#define antiRebote		30
 
 /*==================[internal data definition]===============================*/
+enum _estadoBot  {
+	NIVEL_1,
+	DESCENDENTE,
+	NIVEL_0,
+	ASCENDENTE
+};
+
+typedef enum _estadoBot statusBot;
+
+
+struct _dataLed{
+	uint8_t Led;				// led a encender puede ser LEDS_VERDE, LEDS_ROJO ,
+								// LEDS_AMARILLO o LEDS_RGB_AZUL
+	uint16_t delta_suma;
+
+};
+
+typedef struct _dataLed dataLed;
+
+
+struct _statusBotones {
+	uint64_t b1_fanco_desc;		// ticks en donde se produce el flanco descendente del boton 1
+	uint64_t b1_fanco_asc;		// ticks en donde se produce el flanco ascendente del boton 1
+	statusBot b1_estado;
+	uint64_t b2_fanco_desc;		// ticks en donde se produce el flanco descendente del boton 2
+	uint64_t b2_fanco_asc;		// ticks en donde se produce el flanco ascendente del boton 2
+	uint8_t contaNiveles;		// cuenta la cantidad de niveles detectados
+	statusBot b2_estado;
+};
+
+typedef struct _statusBotones statusBotones;
+
+/*==================[Global data declaration]==============================*/
+// Reservo espacio para el estado de cada tarea
+tarea estadoTareaBoton1,estadoTareaBoton2;
+tarea estadoTareaUpdate,estadoTareaLed;
+
+// Creo los semáforos binarios
+semaforo semTecla1_descendente, semTecla1_ascendente;
+semaforo semTecla2_descendente, semTecla2_ascendente;
+semaforo semTecla1_OK, semTecla2_OK;
+
+cola bufferLed;			// Creo una cola
+
+statusBotones status_button;
+
+/*==================[internal functions declaration]=========================*/
+// Mensajes predifinidos
+//char MSG_LedVerde[]={"Led verde encendido:"};
+//char MSG_LedRojo[]={"Led rojo encendido:"};
+//char MSG_LedAzul[]={"Led azul encendido:"};
+//char MSG_LedAmarillo[]={"Led amarillo encendido:"};
+//char MSG_Asc[]={"Tiempos entre flancos ascendentes: "};
+//char MSG_Desc[]={"Tiempos entre flancos descendentes: "};
+//char MSG_Mseg[]={" ms"};
+
 
 /*==================[external data definition]===============================*/
 
@@ -155,6 +203,25 @@ void itoa (uint16_t value, char *result, uint8_t base) {
 }
 
 
+// Inicializa la variable que controla la máquina de estado del programa
+void statusBUttonInit(void){
+	status_button.b1_fanco_asc=0;
+	status_button.b1_fanco_desc=0;
+	status_button.b1_estado=NIVEL_1;
+	status_button.b2_fanco_asc=0;
+	status_button.b2_fanco_desc=0;
+	status_button.contaNiveles=0;
+	status_button.b2_estado=NIVEL_1;
+}
+
+// Se informa que se tocaron las teclas en forma no intercalada
+void informo_error(void) {
+	statusBUttonInit();
+	uartWriteString (UART_USB,"ERROR: -- se tocaron dos veces la misma tecla --\n\r");
+}
+
+
+
 /*==================[Definicion de tareas para el OS]==========================*/
 
 //==================[Tareas para probar el SO]==================================
@@ -162,169 +229,173 @@ void itoa (uint16_t value, char *result, uint8_t base) {
  * se incrementan en forma pareja, y por otro lado informan visualmente
  * que el SO se encuentra funcionando
  */
-void tarea1(void)  {
-	uint32_t h = 0;
-	uint32_t i = 0;
-
+void tareaBoton1(void)  {
 	while (1) {
-		h++;
-		i++;
-		if(h==VALOR && i==VALOR){
-//			Board_LED_Toggle(LEDS_RGB_VERDE);
-		}
-		if(h==RESET_C && i==RESET_C){
-				h=0;
-				i=0;
+		while(status_button.b1_estado==NIVEL_1){
+			os_SemaforoTake(&semTecla1_descendente,portMax_DELAY);
+			tareaDelay(antiRebote);
+			if(gpioRead(TEC1)==0){
+				// Guardo t1 del boton 1
+				status_button.b1_fanco_desc=os_getSytemTicks();
+				status_button.contaNiveles++;
+				status_button.b1_estado=NIVEL_0;
 				}
-	}
-}
-
-void tarea2(void)  {
-	uint32_t j = 0;
-	uint32_t k = 0;
-	uint8_t contador=0;
-
-	while (1) {
-		j++;
-		k++;
-		if(j==VALOR && k==VALOR){
-			Board_LED_Toggle(LEDS_AMARILLO);
-			os_SemaforoGive(&sem1);			// Libero el semáforo1
-			tareaDelay(1000);				// En milisegundos
-			contador++;
-			//if(contador==4) os_setTareaPrioridad(&estadoTarea1,PRIORIDAD_2);
-		}
-		if(j==RESET_C && k==RESET_C){
-				j=0;
-				k=0;
-		}
-	}
-}
-
-void tarea3(void)  {
-	uint32_t r = 0;
-	uint32_t s = 0;
-	while (1) {
-		r++;
-		s++;
-		if(r==VALOR && s==VALOR){
-			Board_LED_Toggle(LEDS_ROJO);
-		}
-		if(r==RESET_C && s==RESET_C){
-				r=0;
-				s=0;
-		}
-	}
-}
-
-void tarea4(void)  {
-	statusSemTake returnTake=pdFalse;
-
-	while (1) {
-			returnTake=os_SemaforoTake(&sem1,2000);		// Tomo el semáforo1 por 5 segundos
-			if(returnTake==pdTrue)
-				Board_LED_Toggle(LEDS_VERDE);
-	}
-}
-
-void tarea5(void)  {
-	uint16_t i=0;;
-	while (1) {
-		if(gpioRead(TEC1))
-			os_ColaPush(&buffer1,&buffer_test[i]);
-		if(i>=sizeof(buffer_test)-1){
-			i=0;
 			}
-		else{
-			i++;
-		}
-	}
-}
-
-void tarea6(void)  {
-	uint32_t r = 0;
-	uint32_t s = 0;
-	while (1) {
-		r++;
-		s++;
-	}
-}
-
-
-void tarea7(void)  {
-	uint32_t r = 0;
-	uint32_t s = 0;
-	while (1) {
-		r++;
-		s++;
-	}
-}
-
-
-void tareaUART(void)  {
-	uint32_t i = 0;
-	char data;
-	char snum[10];
-	uint16_t c;
-
-	while (1) {
-		os_ColaPop(&buffer1,&data);
-		tareaDelay(100);
-		uartWriteByte(UART_USB,data);
-		if(data==buffer_test[i])
-			Board_LED_Toggle(LEDS_RGB_AZUL);
-		if(i>=sizeof(buffer_test)-1){
-			itoa(278,snum,10);
-			c=0;
-			while(snum[c]!='\0'){
-					uartWriteByte(UART_USB,snum[c]);
-					c++;
-			};
-			uartWriteByte(UART_USB,13);
-			uartWriteByte(UART_USB,10);
-			i=0;
+		while(status_button.b1_estado==NIVEL_0){
+			os_SemaforoTake(&semTecla1_ascendente,portMax_DELAY);
+			tareaDelay(antiRebote);
+			 if(gpioRead(TEC1)==1){
+				// Guardo t2 del boton 1
+				status_button.b1_fanco_asc=os_getSytemTicks();
+				status_button.contaNiveles++;
+				status_button.b1_estado=NIVEL_1;
+				if(status_button.b2_fanco_asc==0 &&status_button.b2_fanco_desc==0){
+					// Se informa que se tocaron las teclas en forma no intercalada
+					informo_error();
+					}
+				else{
+					// Informo que el boton 1 se produjeron los dos flancos
+					os_SemaforoGive(&semTecla1_OK);
+					}
+				}
 			}
-		else{
-			i++;
+	}
+}
+
+void tareaBoton2(void)  {
+	while (1) {
+		while(status_button.b2_estado==NIVEL_1){
+			os_SemaforoTake(&semTecla2_descendente,portMax_DELAY);
+			tareaDelay(antiRebote);
+			if(gpioRead(TEC2)==0){
+				// Guardo t1 del boton 2
+				status_button.b2_fanco_desc=os_getSytemTicks();
+				status_button.contaNiveles++;
+				status_button.b2_estado=NIVEL_0;
+				}
+			}
+		while(status_button.b2_estado==NIVEL_0){
+			os_SemaforoTake(&semTecla2_ascendente,portMax_DELAY);
+			tareaDelay(antiRebote);
+			if(gpioRead(TEC2)==1){
+				// Guardo t2 del boton 2
+				status_button.b2_fanco_asc=os_getSytemTicks();
+				status_button.contaNiveles++;
+				status_button.b2_estado=NIVEL_1;
+				if(status_button.b1_fanco_asc==0 && status_button.b1_fanco_desc==0){
+					// Informo error se tocaron 2 veces misma tecla
+					informo_error();
+					}
+				else{
+					// Se informa que se tocaron las teclas en forma no intercalada
+					os_SemaforoGive(&semTecla2_OK);
+					}
+				}
+			}
+	}
+}
+
+
+
+void tareaUpdate(void)  {
+	int16_t delta_t1, delta_t2;
+	dataLed datoToLed;
+	uint8_t statusLedAux;
+	char s_ascendente[8],s_descendente[8];
+
+	while (1) {
+		// Espero que se presionen las dos teclas
+		os_SemaforoTake(&semTecla1_OK, portMax_DELAY);
+		os_SemaforoTake(&semTecla2_OK, portMax_DELAY);
+
+//		//===================================
+//		tareaDelay(2000);
+//		status_button.b1_fanco_asc=1000;
+//		status_button.b1_fanco_desc=5900;
+//		status_button.b2_fanco_asc=2000;
+//		status_button.b2_fanco_desc=3000;
+//		status_button.contaNiveles=4;
+//		//===================================
+
+
+		// Calculo los delta, es una sección crítica
+		//irqOff();
+		delta_t1=status_button.b2_fanco_desc-status_button.b1_fanco_desc;
+		delta_t2=status_button.b2_fanco_asc-status_button.b1_fanco_asc;
+		statusLedAux=0;
+		if(status_button.contaNiveles==4){
+			// Selecciono en que estado estoy
+			if(delta_t1>0 && delta_t2>0) statusLedAux=LEDS_VERDE;
+			if(delta_t1>=0 && delta_t2<0) statusLedAux=LEDS_ROJO;
+			if(delta_t1<0 && delta_t2>=0) statusLedAux=LEDS_AMARILLO;
+			if(delta_t1<0 && delta_t2<0) statusLedAux=LEDS_RGB_AZUL;
+			}
+
+		// Reinicializa la variable
+		statusBUttonInit();
+		//irqOn();
+
+		if(statusLedAux!=0){
+			// Informo que se enciendan los led
+			datoToLed.delta_suma=abs(delta_t1)+abs(delta_t2);
+			datoToLed.Led=statusLedAux;
+			os_ColaPush(&bufferLed,&datoToLed);
+
+			// Convierto a string los números
+			itoa(abs(delta_t2),s_ascendente,10);
+			itoa(abs(delta_t1),s_descendente,10);
+
+			//  Tx por la UART
+			switch(statusLedAux){
+			case LEDS_VERDE:
+				uartWriteString(UART_USB,"Led verde encendido:\n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos ascendentes:");
+				uartWriteString(UART_USB,s_ascendente);
+				uartWriteString(UART_USB," mseg \n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos descendentes:");
+				uartWriteString(UART_USB,s_descendente);
+				uartWriteString(UART_USB," mseg \n\r");
+				break;
+			case LEDS_ROJO:
+				uartWriteString(UART_USB,"Led rojo encendido:\n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos ascendentes:");
+				uartWriteString(UART_USB,s_ascendente);
+				uartWriteString(UART_USB," mseg \n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos descendentes:");
+				uartWriteString(UART_USB,s_descendente);
+				uartWriteString(UART_USB," mseg \n\r");
+				break;
+			case LEDS_AMARILLO:
+				uartWriteString(UART_USB,"Led amarillo encendido:\n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos ascendentes:");
+				uartWriteString(UART_USB,s_ascendente);
+				uartWriteString(UART_USB," mseg \n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos descendentes:");
+				uartWriteString(UART_USB,s_descendente);
+				uartWriteString(UART_USB," mseg \n\r");
+				break;
+			case LEDS_RGB_AZUL:
+				uartWriteString(UART_USB,"Led azul encendido:\n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos ascendentes:");
+				uartWriteString(UART_USB,s_ascendente);
+				uartWriteString(UART_USB," mseg \n\r\t");
+				uartWriteString(UART_USB,"Tiempos entre flancos descendentes:");
+				uartWriteString(UART_USB,s_descendente);
+				uartWriteString(UART_USB," mseg \n\r");
+				break;
+				}
 		}
 	}
 }
 
-void encenderLed(void)  {
-	char msg[25];
-	uint8_t i;
-
-	strcpy(msg,"Se presiono la tecla 1\n\r");
+void tareaLed(void)  {
+	dataLed datoToLed;
 
 	while (1) {
-
-		os_SemaforoTake(&semTecla1_descendente, portMax_DELAY);
-		gpioWrite(LED1,true);
-
-		i = 0;
-		while(msg[i] != NULL)  {
-			os_ColaPop(&colaUart,(msg + i));
-			i++;
-		}
-	}
-}
-
-void apagarLed(void)  {
-	char msg[25];
-	uint8_t i;
-
-	strcpy(msg,"Se solto la tecla 1\n\r");
-
-	while (1) {
-
-		os_SemaforoTake(&semTecla1_ascendente,portMax_DELAY);
-		gpioWrite(LED1,false);
-
-		i = 0;
-		while(msg[i] != NULL)  {
-			os_ColaPop(&colaUart,(msg + i));
-			i++;
-		}
+		os_ColaPop(&bufferLed,&datoToLed);
+		Board_LED_Set(datoToLed.Led,ON);
+		tareaDelay(datoToLed.delta_suma);
+		Board_LED_Set(datoToLed.Led,OFF);
 	}
 }
 //==============================================================================
@@ -340,12 +411,12 @@ void tecla1_flanco_asc(void)  {
 }
 
 void tecla2_flanco_desc(void) {
-	os_SemaforoGive(&semTecla1_descendente);
+	os_SemaforoGive(&semTecla2_descendente);
 	Chip_PININT_ClearIntStatus( LPC_GPIO_PIN_INT, PININTCH( 2 ) );
 }
 
 void tecla2_flanco_asc(void)  {
-	os_SemaforoGive(&semTecla1_ascendente);
+	os_SemaforoGive(&semTecla2_ascendente);
 	Chip_PININT_ClearIntStatus( LPC_GPIO_PIN_INT, PININTCH( 3 ) );
 }
 
@@ -355,26 +426,26 @@ int main(void)  {
 
 	initHardware();
 
-	os_InitTarea(tarea1, &estadoTarea1,PRIORIDAD_0);
-	os_InitTarea(tarea2, &estadoTarea2,PRIORIDAD_0);
-	os_InitTarea(tarea3, &estadoTarea3,PRIORIDAD_0);
-	os_InitTarea(tarea4, &estadoTarea4,PRIORIDAD_0);
-	os_InitTarea(tarea5, &estadoTarea5,PRIORIDAD_0);
-	os_InitTarea(tarea6, &estadoTarea6,PRIORIDAD_0);
-	os_InitTarea(tarea7, &estadoTarea7,PRIORIDAD_0);
-	os_InitTarea(tareaUART, &estadoUART,PRIORIDAD_0);
+	// Inicializa la variable
+	statusBUttonInit();
 
-//*************************************************************
-	os_InitTarea(encenderLed, &g_sEncenderLed,PRIORIDAD_0);
-	os_InitTarea(apagarLed, &g_sApagarLed,PRIORIDAD_0);
+	//*************************************************************
+	// Configura las tareas
+	os_InitTarea(tareaBoton1, &estadoTareaBoton1,PRIORIDAD_0);
+	os_InitTarea(tareaBoton2, &estadoTareaBoton2,PRIORIDAD_0);
+	os_InitTarea(tareaLed, &estadoTareaLed,PRIORIDAD_1);
+	os_InitTarea(tareaUpdate, &estadoTareaUpdate,PRIORIDAD_0);
 
-	os_ColaInit(&colaUart,sizeof(char));
+	// Configuro la cola
+	os_ColaInit(&bufferLed,sizeof(dataLed));
+	//Configuro los semáforos
 	os_SemaforoInit(&semTecla1_ascendente);
 	os_SemaforoInit(&semTecla1_descendente);
-
-
-
-
+	os_SemaforoInit(&semTecla2_ascendente);
+	os_SemaforoInit(&semTecla2_descendente);
+	os_SemaforoInit(&semTecla1_OK);
+	os_SemaforoInit(&semTecla2_OK);
+	// Instalo las interrupciones
 	os_InstalarIRQ(PIN_INT0_IRQn,tecla1_flanco_desc);
 	os_InstalarIRQ(PIN_INT1_IRQn,tecla1_flanco_asc);
 	os_InstalarIRQ(PIN_INT2_IRQn,tecla2_flanco_desc);
@@ -382,18 +453,13 @@ int main(void)  {
 	//*************************************************************
 
 
-
-	//Inicializo los semáforos
-	os_SemaforoInit(&sem1);
-
-	os_ColaInit(&buffer1, sizeof(char));
-
 	os_Init();					// Ejecuta el Sistema Operativo
 
 
 	while (1) {					// Se queda esperando
 		__WFI();
 	}
+
 }
 
 

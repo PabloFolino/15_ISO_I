@@ -9,22 +9,32 @@ Año: 2022
 
 Se parte del commit  Nº4 del repositorio ttps://github.com/gonzaloesanchez/MSE_OS.git "Implementada getContextoSiguiente y PendSV_Handler"
 
-Avances del último commit 14/08 :
-
-	Se crea los archivos MSE_OS_IRQ.c y MSE_OS_IRQ.h
-	1) Se crean las funciones para manejar las colas:
-			a) os_InstalarIRQ() --> Instalar la ISR
-			b) os_RemoverIRQ()  --> Remueve la ISR
-			c) os_IRQHandler()	--> Ateinde la ISR
-	Esta última necesita modificar el un flag para avisarle al S.O. si la llamada
-	a la atención de la ISR vino de una API. Para eso se usa un flag del S.O. que 
-	se setea y consulta con las funciones os_setFlagISR() y os_getFlagISR().
-			
-	MSE_API.c y MSE_API.h.
-	1) Se crean las funciones para manejar el flag de interrupciones:
-			a) os_setFlagISR(valor)  --> Setea el valor del flag
-			b) os_getFlagISR()  	 --> REcupera el valor del flag
-
+Avances del último commit 17/08 :
+ *===========================================================================*/
+/*Descripción:
+ * Ese módulo  es un ejemplo del programa principal para el sistema operativo.
+ * Este programa se probó en la EDU-CIAA-NXP.
+ * Es un S.O. estático, que en tiempo de compilación se especifican la cantidad
+ * de tareas a utilizar, la cantidad de dsemáforos , y la cantidad de colas.
+ *
+ * Examen:
+ * 	El programa mide el tiempo que pasa entre los flancos de dos teclas
+ * TEC1 y TEC2.
+ * Si las teclas se presionan en forma que se solapen informa por puerto
+ * serie el tiempo trenscurrido entre los flancos y hace una secuencia de
+ * leds, dependiendo que tecla se presionó primiro y qué tecla se solto
+ * primero.
+ * Si se presiona en forma no intercalada veces la misma tecla y la otra no,
+ * informa por puerto serie ese ERROR.
+ * Se implementó una rurina antirebote mixta(de complicado nomás), el primer
+ * cambio se detecta por interrupciones y el segundo se verifica por encuesta.
+ *
+ * Nota: la tareaLed se la pone con PRIORIDAD_1 para demostar que funcionan
+ * el scheduler. También se puede verificar que cuando todas las tareas de
+ * encuentran BLOQUEADAS entra en funcionamiento la tareaIDLE.
+ *
+ *
+ *===========================================================================*/
 
 # Requerimientos del Sistema Operativo
 
@@ -83,6 +93,21 @@ En el MSE_OS_Core.c y PendSV_Handler.S:
 
 # Historial de commits
 
+Avances del commit 14/08 :
+
+	Se crea los archivos MSE_OS_IRQ.c y MSE_OS_IRQ.h
+	1) Se crean las funciones para manejar las colas:
+			a) os_InstalarIRQ() --> Instalar la ISR
+			b) os_RemoverIRQ()  --> Remueve la ISR
+			c) os_IRQHandler()	--> Ateinde la ISR
+	Esta última necesita modificar el un flag para avisarle al S.O. si la llamada
+	a la atención de la ISR vino de una API. Para eso se usa un flag del S.O. que 
+	se setea y consulta con las funciones os_setFlagISR() y os_getFlagISR().
+			
+	MSE_API.c y MSE_API.h.
+	1) Se crean las funciones para manejar el flag de interrupciones:
+			a) os_setFlagISR(valor)  --> Setea el valor del flag
+			b) os_getFlagISR()  	 --> REcupera el valor del flag
 Avances del commit 13/08 :
 	
 	MSE_API.c y MSE_API.h.

@@ -18,9 +18,11 @@
 /********************************************************************************
  * Definicion de las constantes
  *******************************************************************************/
-#define portMax_DELAY 0xFFFFFFFFFFFFFFFF	// Máxima cuenta de Ticks
+#define portMax_DELAY 0xFFFFFFFF			// Máxima cuenta de Ticks
+											// EL MAX TEÓRICO ES 0xFFFFFFFFFFFFFFFF
+											// se pone este valor para que no haga overflow
 
-#define LONG_COLA	 64						// Espacio de la cola en memoria
+#define LONG_COLA	64 					// Espacio de la cola en memoria
 
 /********************************************************************************
  * Definicion de la estructura para los semaforos

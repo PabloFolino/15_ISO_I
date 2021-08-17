@@ -197,13 +197,13 @@ void os_InitTarea(void *entryPoint, tarea *task, prioridadTarea prioridad)  {
 void tareaDelay(uint32_t cuentas) {
 
 	if(control_OS.estado_sistema!=OS_IRQ_RUN){
-		irqOff();
 		if (cuentas!=0){
+			irqOff();
 			control_OS.tarea_actual->ticks_bloqueada=cuentas;
 			control_OS.tarea_actual->estado=TAREA_BLOCKED;
+			irqOn();
 			os_Yield();
-		}
-		irqOn();
+			}
 		}
 	else{
 		os_setError(ERR_DELAY_FROM_ISR,tareaDelay);			// Se produce un error
@@ -221,7 +221,9 @@ void tareaDelay(uint32_t cuentas) {
 	 *  @return     systemTicks
 ***************************************************************************************************/
 uint64_t os_getSytemTicks(void){
+	irqOff();
 	return systemTicks;
+	irqOn();
 }
 
 
